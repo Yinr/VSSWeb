@@ -39,21 +39,18 @@ if( fsys.update.simpleMain(
 	"https://vssweb.lolicon.in/version.txt", /*网址也可以改用目录名，并使用服务端代码动态返回version.txt*/
 	"/download/update-files", /*绿色软件建议改为 io.appData("/软件厂商名/软件名字/update-files") */
 	function(version,description,status){
-		/*
-		version参数包含最新版本号，
-		description包含最新版本更新说明，
-		status参数值见下面的列表：
-			"ready": 下载已完成并准备更新,
-			"updated": 已更新到新版本并准备启动新版
-			"complete": 当前已更新并已启动新版本主程序，所有操作已完成
-			"latest": 已经是最新版不需要更新
-			"failed": 出错了,description参数为错误信息
-		
-		这个回调函数不是必须的，
-		在此检测更新代码之前或之后都可以在界面线程调用
-		fsys.update.simpleMain.onStatusChanged 订阅更新状态变更信息。
-		该认阅回调函数的参数与上面的回调参数相同。
-		*/
+		if(status == "ready"){
+			import fsys.version;
+			var verInfo = fsys.version.getInfo(io._exepath);
+			var currentVersion = verInfo ? tostring(verInfo.productVersion) : "未知版本";
+
+			var msg = '发现新版本！\n\n当前版本：' ++ currentVersion ++ '\n最新版本：' ++ version;
+			if(description && description != ""){
+				msg = msg ++ '\n\n更新内容：\n' ++ description;
+			}
+			msg = msg ++ '\n\n建议立即重启应用以完成更新，或在下次启动时自动更新。';
+			win.msgbox(msg, "更新提示", "info", mainForm);
+		}
 	} )){
 	return 0; //必须退出 main.aardio 以启动更新
 }
