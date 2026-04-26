@@ -1,0 +1,648 @@
+import win.ui;
+import win.dlg.message;
+import config;
+import logger;
+
+/*DSG{{*/
+mainForm = win.form(text="监控 ActiveX 直连版";right=1280;bottom=750)
+mainForm.add(
+axHost={cls="static";left=10;top=10;right=980;bottom=720;db=1;dl=1;dr=1;dt=1;edge=1;z=4};
+btnCh01={cls="button";text="打开 01";left=1000;top=195;right=1115;bottom=233;z=11};
+btnCh02={cls="button";text="打开 02";left=1130;top=195;right=1245;bottom=233;z=15};
+btnCh03={cls="button";text="打开 03";left=1000;top=245;right=1115;bottom=283;z=5};
+btnCh04={cls="button";text="打开 04";left=1130;top=245;right=1245;bottom=283;z=8};
+btnCh05={cls="button";text="打开 05";left=1000;top=295;right=1115;bottom=333;z=18};
+btnCh06={cls="button";text="打开 06";left=1130;top=295;right=1245;bottom=333;z=9};
+btnCh07={cls="button";text="打开 07";left=1000;top=345;right=1115;bottom=383;z=16};
+btnCh08={cls="button";text="打开 08";left=1130;top=345;right=1245;bottom=383;z=2};
+btnCloseAll={cls="button";text="关闭全部通道";left=1000;top=125;right=1245;bottom=163;z=17};
+btnDown={cls="button";text='\u2193';left=1080;top=555;right=1165;bottom=593;z=14};
+btnLeft={cls="button";text='\u2190';left=1000;top=505;right=1085;bottom=543;z=1};
+btnOpenAll={cls="button";text="打开全部通道";left=1000;top=75;right=1245;bottom=113;z=6};
+btnRight={cls="button";text='\u2192';left=1160;top=505;right=1245;bottom=543;z=10};
+btnSetting={cls="button";text="设置";left=1000;top=20;right=1245;bottom=58;z=12};
+btnUp={cls="button";text='\u2191';left=1080;top=455;right=1165;bottom=493;z=7};
+lblPtz={cls="static";text="云台控制";left=1000;top=420;right=1245;bottom=445;z=3};
+statusText={cls="static";text="状态：正在初始化";left=1000;top=625;right=1245;bottom=720;edge=1;z=13}
+)
+/*}}*/
+
+// 纯本地直连版没有日志文本框，所以第一个参数传 null。
+// 如果想和主程序共用日志，把 /native_log.txt 改成 /log.txt。
+logger.init(null, io.fullpath("/native_log.txt"));
+
+log = function(msg){
+    logger.write(msg);
+}
+
+var OCX_ID = "{D639FA00-CB11-4f67-82F2-C0A87EAECD13}";
+
+var ocxHost = null;
+var ocx = null;
+
+var cfg = {
+    ip = "";
+    username = "";
+    password = "";
+}
+
+var chOpened = {};
+var chButtons = {};
+var chNames = {};
+
+toText = function(v){
+    if(v === null) {
+        return "<null>";
+    }
+
+    return tostring(v);
+}
+
+setStatus = function(msg){
+    logger.status(msg);
+    mainForm.statusText.text = "状态：" ++ msg;
+}
+
+pad2 = function(n){
+    return string.format("%02d", n);
+}
+
+loadConfig = function(){
+    config.loadDevice();
+
+    cfg.ip = config.device.ip;
+    if(cfg.ip === null || cfg.ip == "") {
+        cfg.ip = "192.168.0.5";
+    }
+
+    cfg.username = config.device.username;
+    if(cfg.username === null || cfg.username == "") {
+        cfg.username = "admin";
+    }
+
+    cfg.password = config.device.password;
+    if(cfg.password === null) {
+        cfg.password = "";
+    }
+}
+
+saveConfig = function(){
+    config.device.ip = cfg.ip;
+    config.device.username = cfg.username;
+    config.device.password = cfg.password;
+
+    config.saveDevice();
+}
+
+loadChannelNames = function(){
+    config.loadChannelNames();
+
+    for(i=1;8;1){
+        var key = "ch" ++ pad2(i);
+        var name = config.channelNames[key];
+
+        if(name === null || name == "") {
+            name = pad2(i);
+        }
+
+        chNames[i] = name;
+    }
+}
+
+hasFullConfig = function(){
+    if(cfg.ip === null || cfg.ip == "") return false;
+    if(cfg.username === null || cfg.username == "") return false;
+    if(cfg.password === null || cfg.password == "") return false;
+    return true;
+}
+
+msgErr = function(title, e){
+    logger.error(title ++ " / " ++ tostring(e));
+
+    win.dlg.messageBox(
+        mainForm.hwnd,
+        title ++ "\r\n\r\n" ++ tostring(e),
+        "错误",
+        0x10
+    );
+}
+
+setChButtonText = function(chId, opened){
+    var idx = chId + 1;
+    var name = chNames[idx];
+
+    if(name === null || name == "") {
+        name = pad2(idx);
+    }
+
+    if(opened) {
+        chButtons[idx].text = "关闭 " ++ name;
+    }
+    else {
+        chButtons[idx].text = "打开 " ++ name;
+    }
+}
+
+setAllChButtonText = function(opened){
+    for(i=1;8;1){
+        chOpened[i] = opened;
+        setChButtonText(i - 1, opened);
+    }
+}
+
+openChannel = function(chId){
+    if(ocx === null) {
+        setStatus("ActiveX 未创建");
+        return false;
+    }
+
+    try {
+        logger.call("ConnectRealVideo(" ++ tostring(chId) ++ ",1)");
+        var ret = ocx.ConnectRealVideo(chId, 1);
+        logger.ret("ConnectRealVideo=" ++ toText(ret));
+
+        if(ret) {
+            chOpened[chId + 1] = true;
+            setChButtonText(chId, true);
+            setStatus("已打开通道 " ++ pad2(chId + 1));
+            return true;
+        }
+        else {
+            setStatus("打开通道 " ++ pad2(chId + 1) ++ " 失败，返回值：" ++ tostring(ret));
+            return false;
+        }
+    }
+    catch(e) {
+        msgErr("调用 ConnectRealVideo 失败：通道 " ++ pad2(chId + 1), e);
+        return false;
+    }
+}
+
+closeChannel = function(chId){
+    if(ocx === null) {
+        setStatus("ActiveX 未创建");
+        return false;
+    }
+
+    try {
+        logger.call("DisConnectRealVideo(" ++ tostring(chId) ++ ")");
+        var ret = ocx.DisConnectRealVideo(chId);
+        logger.ret("DisConnectRealVideo=" ++ toText(ret));
+
+        if(ret) {
+            chOpened[chId + 1] = false;
+            setChButtonText(chId, false);
+            setStatus("已关闭通道 " ++ pad2(chId + 1));
+            return true;
+        }
+        else {
+            // 保留一个 UI fallback，避免按钮卡死。
+            chOpened[chId + 1] = false;
+            setChButtonText(chId, false);
+
+            setStatus("关闭通道 " ++ pad2(chId + 1) ++ " 失败，已重置按钮状态，返回值：" ++ tostring(ret));
+            return false;
+        }
+    }
+    catch(e) {
+        msgErr("调用 DisConnectRealVideo 失败：通道 " ++ pad2(chId + 1), e);
+        return false;
+    }
+}
+
+toggleChannel = function(chId){
+    if(chOpened[chId + 1]) {
+        closeChannel(chId);
+    }
+    else {
+        openChannel(chId);
+    }
+}
+
+loginDevice = function(openAllAfterLogin){
+    if(ocx === null) {
+        setStatus("ActiveX 未创建");
+        return false;
+    }
+
+    loadConfig();
+
+    if(!hasFullConfig()) {
+        setStatus("未设置完整连接信息，请点击“设置”填写");
+        return false;
+    }
+
+    try {
+        logger.call("LoginDeviceEx(" ++ cfg.ip ++ ",0," ++ cfg.username ++ ",<password>,0)");
+        var ret = ocx.LoginDeviceEx(cfg.ip, 0, cfg.username, cfg.password, 0);
+        logger.ret("LoginDeviceEx=" ++ toText(ret));
+
+        if(ret) {
+            setStatus("登录成功：" ++ cfg.ip);
+
+            if(openAllAfterLogin) {
+                mainForm.setTimeout(
+                    function(){
+                        openAllChannels();
+                    },
+                    500
+                );
+            }
+
+            return true;
+        }
+        else {
+            setStatus("登录失败，返回值：" ++ tostring(ret));
+            return false;
+        }
+    }
+    catch(e) {
+        setStatus("登录调用失败");
+        msgErr("调用 LoginDeviceEx 失败", e);
+        return false;
+    }
+}
+
+logoutDevice = function(){
+    if(ocx === null) return;
+
+    logger.call("logoutDevice");
+
+    try {
+        logger.call("DisConnectAllChannel()");
+        var r1 = ocx.DisConnectAllChannel();
+        logger.ret("DisConnectAllChannel=" ++ toText(r1));
+    }
+    catch(e) {
+        logger.error("DisConnectAllChannel 异常：" ++ tostring(e));
+    }
+
+    try {
+        logger.call("LogoutDevice()");
+        var r2 = ocx.LogoutDevice();
+        logger.ret("LogoutDevice=" ++ toText(r2));
+    }
+    catch(e) {
+        logger.error("LogoutDevice 异常：" ++ tostring(e));
+    }
+
+    try {
+        logger.call("CloseLocalPlay()");
+        var r3 = ocx.CloseLocalPlay();
+        logger.ret("CloseLocalPlay=" ++ toText(r3));
+    }
+    catch(e) {
+        logger.error("CloseLocalPlay 异常：" ++ tostring(e));
+    }
+
+    setAllChButtonText(false);
+    setStatus("已退出");
+}
+
+openAllChannels = function(){
+    if(ocx === null) {
+        setStatus("ActiveX 未创建");
+        return;
+    }
+
+    try {
+        logger.call("ConnectAllChannle()");
+        var ret = ocx.ConnectAllChannle();
+        logger.ret("ConnectAllChannle=" ++ toText(ret));
+
+        if(ret) {
+            setAllChButtonText(true);
+            setStatus("已打开全部 8 个通道");
+        }
+        else {
+            // 有些控件的 ConnectAllChannle 返回值不稳定，
+            // 这里失败时逐个打开 0~7。
+            var okCount = 0;
+
+            for(chId=0;7;1){
+                if(openChannel(chId)) {
+                    okCount++;
+                }
+            }
+
+            setStatus("逐个打开完成，成功 " ++ tostring(okCount) ++ " 个通道");
+        }
+    }
+    catch(e) {
+        logger.error("ConnectAllChannle 异常，改为逐个打开：" ++ tostring(e));
+
+        var okCount = 0;
+
+        for(chId=0;7;1){
+            if(openChannel(chId)) {
+                okCount++;
+            }
+        }
+
+        setStatus("逐个打开完成，成功 " ++ tostring(okCount) ++ " 个通道");
+    }
+}
+
+closeAllChannels = function(){
+    if(ocx === null) {
+        setStatus("ActiveX 未创建");
+        return;
+    }
+
+    try {
+        logger.call("DisConnectAllChannel()");
+        var ret = ocx.DisConnectAllChannel();
+        logger.ret("DisConnectAllChannel=" ++ toText(ret));
+
+        if(ret) {
+            setAllChButtonText(false);
+            setStatus("已关闭全部通道");
+        }
+        else {
+            var okCount = 0;
+
+            for(chId=0;7;1){
+                if(closeChannel(chId)) {
+                    okCount++;
+                }
+            }
+
+            setStatus("逐个关闭完成，成功 " ++ tostring(okCount) ++ " 个通道");
+        }
+    }
+    catch(e) {
+        logger.error("DisConnectAllChannel 异常，改为逐个关闭：" ++ tostring(e));
+
+        var okCount = 0;
+
+        for(chId=0;7;1){
+            if(closeChannel(chId)) {
+                okCount++;
+            }
+        }
+
+        setStatus("逐个关闭完成，成功 " ++ tostring(okCount) ++ " 个通道");
+    }
+}
+
+showSettingDialog = function(){
+    loadConfig();
+
+    var dlg = win.form(
+        parent = mainForm;
+        text = "连接设置";
+        left = 0;
+        top = 0;
+        right = 420;
+        bottom = 230;
+        max = false;
+        min = false;
+    );
+
+    dlg.add(
+        lblIp = {
+            cls = "static";
+            text = "连接地址";
+            left = 30;
+            top = 30;
+            right = 110;
+            bottom = 55;
+        };
+        editIp = {
+            cls = "edit";
+            text = cfg.ip;
+            left = 120;
+            top = 28;
+            right = 380;
+            bottom = 56;
+            edge = 1;
+        };
+        lblUser = {
+            cls = "static";
+            text = "用户名";
+            left = 30;
+            top = 75;
+            right = 110;
+            bottom = 100;
+        };
+        editUser = {
+            cls = "edit";
+            text = cfg.username;
+            left = 120;
+            top = 73;
+            right = 380;
+            bottom = 101;
+            edge = 1;
+        };
+        lblPass = {
+            cls = "static";
+            text = "密码";
+            left = 30;
+            top = 120;
+            right = 110;
+            bottom = 145;
+        };
+        editPass = {
+            cls = "edit";
+            text = cfg.password;
+            left = 120;
+            top = 118;
+            right = 380;
+            bottom = 146;
+            edge = 1;
+            password = 1;
+        };
+        btnSave = {
+            cls = "button";
+            text = "保存";
+            left = 120;
+            top = 170;
+            right = 230;
+            bottom = 205;
+        };
+        btnCancel = {
+            cls = "button";
+            text = "取消";
+            left = 270;
+            top = 170;
+            right = 380;
+            bottom = 205;
+        }
+    );
+
+    dlg.btnSave.oncommand = function(){
+        cfg.ip = dlg.editIp.text;
+        cfg.username = dlg.editUser.text;
+        cfg.password = dlg.editPass.text;
+
+        if(cfg.ip == "") {
+            cfg.ip = "192.168.0.5";
+        }
+
+        if(cfg.username == "") {
+            cfg.username = "admin";
+        }
+
+        saveConfig();
+        setStatus("设置已保存到 " ++ config.path);
+
+        dlg.close();
+
+        // 保存后如果三项完整，重新登录并打开全部通道
+        if(hasFullConfig()) {
+            logoutDevice();
+            mainForm.setTimeout(
+                function(){
+                    loginDevice(true);
+                },
+                300
+            );
+        }
+    }
+
+    dlg.btnCancel.oncommand = function(){
+        dlg.close();
+    }
+
+    dlg.show();
+}
+
+// 初始化配置
+loadConfig();
+loadChannelNames();
+
+logger.clear();
+log("==============================================");
+log("监控 ActiveX 直连版启动");
+log("配置文件：" ++ config.path);
+log("日志文件：" ++ logger.path);
+log("ip=" ++ cfg.ip);
+log("username=" ++ cfg.username);
+log("password=" ++ (cfg.password == "" ? "<空>" : "<已设置>"));
+log("==============================================");
+
+// 创建并嵌入 ActiveX
+try {
+    logger.call("createEmbed " ++ OCX_ID);
+
+    ocxHost = mainForm.axHost.createEmbed(OCX_ID);
+    ocx = ocxHost._object;
+
+    // 对应 olp.js 里的 param。
+    // 注意：纯本地 createEmbed 版设置属性的效果不如 HTML <param> 稳定，
+    // 所以这个版本只作为备份测试用。
+    try { ocx.lVideoWindNum = 4; } catch(e) { logger.error("设置 lVideoWindNum 失败：" ++ tostring(e)); }
+    try { ocx.VideoWindBGColor = ""; } catch(e) {}
+    try { ocx.VideoWindBarColor = ""; } catch(e) {}
+    try { ocx.VideoWindTextColor = ""; } catch(e) {}
+    try { ocx.SetLangFromIP = "http://" ++ cfg.ip ++ "/"; } catch(e) {}
+    try { ocx.SetHostPort = 8000; } catch(e) {}
+    try { ocx.SetUpnpPort = 8000; } catch(e) {}
+    try { ocx.SetLanguage = 101; } catch(e) {}
+
+    setStatus("ActiveX 已创建");
+}
+catch(e) {
+    setStatus("ActiveX 创建失败");
+
+    logger.error("ActiveX 创建失败：" ++ tostring(e));
+
+    win.dlg.messageBox(
+        mainForm.hwnd,
+        "ActiveX 创建失败。\r\n\r\n请确认：\r\n"
+        ++ "1. 已安装 IVSWeb.cab / 对应 OCX；\r\n"
+        ++ "2. 程序位数与控件一致，老监控控件通常是 32 位；\r\n"
+        ++ "3. 控件 CLSID 已注册：D639FA00-CB11-4f67-82F2-C0A87EAECD13。\r\n\r\n"
+        ++ "错误信息：\r\n" ++ tostring(e),
+        "错误",
+        0x10
+    );
+}
+
+// 初始化通道按钮数组
+chButtons = {
+    mainForm.btnCh01,
+    mainForm.btnCh02,
+    mainForm.btnCh03,
+    mainForm.btnCh04,
+    mainForm.btnCh05,
+    mainForm.btnCh06,
+    mainForm.btnCh07,
+    mainForm.btnCh08
+}
+
+for(i=1;8;1){
+    chOpened[i] = false;
+    setChButtonText(i - 1, false);
+}
+
+// 通道按钮事件：显示自定义名称，实际 ID 仍为 0~7
+mainForm.btnCh01.oncommand = function(){ toggleChannel(0); }
+mainForm.btnCh02.oncommand = function(){ toggleChannel(1); }
+mainForm.btnCh03.oncommand = function(){ toggleChannel(2); }
+mainForm.btnCh04.oncommand = function(){ toggleChannel(3); }
+mainForm.btnCh05.oncommand = function(){ toggleChannel(4); }
+mainForm.btnCh06.oncommand = function(){ toggleChannel(5); }
+mainForm.btnCh07.oncommand = function(){ toggleChannel(6); }
+mainForm.btnCh08.oncommand = function(){ toggleChannel(7); }
+
+mainForm.btnOpenAll.oncommand = function(){
+    openAllChannels();
+}
+
+mainForm.btnCloseAll.oncommand = function(){
+    closeAllChannels();
+}
+
+mainForm.btnSetting.oncommand = function(){
+    showSettingDialog();
+}
+
+// 云台控制
+ptz = function(cmd, stop){
+    if(ocx === null) return;
+
+    try {
+        logger.call("ControlPtz(" ++ tostring(cmd) ++ ",0,5,0," ++ tostring(stop) ++ ")");
+        var r = ocx.ControlPtz(cmd, 0, 5, 0, stop);
+        logger.ret("ControlPtz=" ++ toText(r));
+    }
+    catch(e) {
+        logger.error("云台控制失败：" ++ tostring(e));
+        setStatus("云台控制失败");
+    }
+}
+
+mainForm.btnUp.onMouseDown = function(){ ptz(0, 0); }
+mainForm.btnUp.onMouseUp = function(){ ptz(0, 1); }
+
+mainForm.btnDown.onMouseDown = function(){ ptz(1, 0); }
+mainForm.btnDown.onMouseUp = function(){ ptz(1, 1); }
+
+mainForm.btnLeft.onMouseDown = function(){ ptz(2, 0); }
+mainForm.btnLeft.onMouseUp = function(){ ptz(2, 1); }
+
+mainForm.btnRight.onMouseDown = function(){ ptz(3, 0); }
+mainForm.btnRight.onMouseUp = function(){ ptz(3, 1); }
+
+mainForm.onClose = function(){
+    logoutDevice();
+}
+
+mainForm.center();
+mainForm.show();
+
+// 启动时：三项完整则自动登录并打开全部通道
+if(hasFullConfig()) {
+    mainForm.setTimeout(
+        function(){
+            loginDevice(true);
+        },
+        500
+    );
+}
+else {
+    setStatus("未设置密码，请点击“设置”");
+}
+
+return win.loopMessage();

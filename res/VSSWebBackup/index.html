@@ -1,0 +1,1088 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<script type="text/javascript" src="oem_t.js"></script>
+<script type="text/javascript" src="m.js"></script>
+<link rel="stylesheet" type="text/css" media="screen" href="m.css" />
+
+<script type="text/javascript">
+var gt;
+var gdomready=0;
+var gopenall=0;
+var gsld;
+var gslda;
+var gsldb;
+var gsldc;
+var gsldd;
+var gca=0;
+var gcb=0;
+var gcc=0;
+var gcd=0;
+var gwid=0;
+var gcid=-1;
+var gptz=0;
+var gxh=0;
+var gfz=0;
+var gxz=0;
+var gxs=0;
+var gxj=0;
+var gdj=0;
+var gdg=0;
+var gchsize=0;
+var HashCookie = new Hash.Cookie('VssWebCookie',{duration: 30});
+var gSettings = {
+	username:'',
+	talktype:'1',
+	logintype:'0'
+}
+
+function iniocx(){
+;
+}
+function showLogin(){
+	$('l').style.top="0px";
+}
+        
+function ld()
+{
+	var username = $("username").value;
+	var password = $("password").value;
+	var logintype=0;
+	var ip = location.hostname;
+
+
+    var r=ocx.LoginDeviceEx(ip,0,username,password,logintype);
+    //if (r==1){
+    if (r){
+        getDevSetting();
+		getChnList();
+    resize();
+    $('password').value="";
+		$('l').style.display="none";
+		$('m').style.top="0px";
+		gSettings['username'] = username;
+		saveSetting();
+	}
+}
+
+function getDevSetting(){
+	var strhtm="";
+	var sret="";
+
+	sret=ocx.GetDevConfig(1);
+	//if (sret.substring(0,1)=="1")
+	strhtm="<a id='xzml' href='javascript:;' onclick='onmu(1)' >"+ tl('MainStream') +"</a>";
+	if (sret.substring(1,2)=="1") strhtm=strhtm+"<a id='xfml' href='javascript:;' onclick='onmu(2)'>"+ tl('SecondStream') +"</a>";
+	$('cmu').setHTML(strhtm);
+}
+
+
+function getChnList(){	
+	var t= new Array();
+	var ts=new Array();
+	var shtml="";
+	var strsplita=String.fromCharCode(9);
+	var strsplitb=String.fromCharCode(16);
+	var sc;
+	sc=ocx.GetChannelName();
+     
+    if (sc !=""){
+		sc=sc.substr(0, sc.length-1);
+		t=sc.split(strsplita);
+
+		gchsize = t.length;
+//		if(gchsize == 32)
+//    	$$('#chnlist li').setStyle('width',100);
+   	
+		for (var i =0; i<t.length;i++ ){
+			ts=t[i].split(strsplitb);
+			ts[1]=reps(ts[1]);
+			shtml+="<li title='" + ts[1]+ "' ><div id='c" + ts[0] + "' class='cl1' onclick='ca(this," + ts[0] +")' ><span>" + ts[1] + "</span></div><a class='ca1' href='javascript:;' onclick='showmu(this," + ts[0] + ")'></a></li>"
+			t[i]=ts;
+		}
+		$("chnlist").innerHTML=shtml;
+		var ls = $$('#chnlist li');
+		ls.each(function(element) {
+			var fx = new Fx.Styles(element, {duration:100, wait:false});
+
+			element.addEvent('mouseenter', function(){
+				fx.start({
+//					'opacity':1
+				});
+			});
+			element.addEvent('mouseleave', function(){
+				fx.start({
+//					'opacity':0.001
+				});
+			});
+		});
+	}
+}
+
+function getSetting(){
+    var strUserName = HashCookie.get('username')
+    if (strUserName) {
+		gSettings['username'] = strUserName;
+	} else {
+		gSettings['username'] = '';
+	}
+}
+
+        
+function saveSetting(){
+	HashCookie.extend(gSettings);
+}
+
+function setUserName(oUserName,oPassWord){
+    
+    oUserName.setProperty('value', gSettings['username']);    
+    if (gSettings['username']=="") {
+         oUserName.focus();
+    }
+    else{
+         oPassWord.focus();
+    }
+}
+
+
+
+function lo()
+{
+	ocx.LogoutDevice();
+	loeft();
+
+}
+function loeft()
+{
+		$('m').style.top="-10000px";
+		$('l').style.display="";
+		closemu();		
+		if (gdj==1){
+			gdj=0;
+			//$('xdj').innerText=tl('AudioTalk');
+		}
+		if (gopenall==1){
+			gopenall=0;
+			$('xac').innerText=tl('W_ACO');
+		}	
+		ocx.CloseLocalPlay();
+}
+function ca(o,ch)
+{
+	if ($(o).hasClass('cl1')){
+		if (ocx.ConnectRealVideo(ch,1)){
+			;
+		}
+	}
+	else{
+		if (!ocx.DisConnectRealVideo(ch)){
+			;
+		}
+	}
+	closemu();
+}
+
+function cptz(){
+	if (gptz==0) 
+	{
+		gptz=1;
+		ocx.ControlPtz(51,0,0,0,0); 
+	}
+	else{
+		gptz=0;
+		ocx.ControlPtz(51,0,0,0,1);
+	}
+	setptzs();	
+}
+
+function setptzs(){
+	if (gdomready==1){
+		if (gptz==0){
+			if ($('cptz').hasClass('y51')){
+				$('cptz').removeClass($('cptz').className);
+				$('cptz').addClass('y5');
+			}
+		}
+		else{
+			$('cptz').removeClass($('cptz').className);
+			$('cptz').addClass('y51');
+		}
+	}
+
+}
+
+
+
+function cfz(o,ts,tb){
+	if (gfz==0)
+	{
+		if (ocx.ControlPtz(52,$('ps').value,0,0,0))
+		{
+			gfz=1;
+			o.innerText=ts;
+		}
+	}
+	else{
+		if (ocx.ControlPtz(53,$('ps').value,0,0,0))
+		{
+			gfz=0;
+			o.innerText=tb;
+		}
+	}
+}
+
+
+
+function cxh(o,ts,tb){
+	if (gxh==0) 
+	{		
+		if (ocx.ControlPtz(13,1,0,76,0))
+		{
+			gxh=1;
+			o.innerText=ts;
+		}
+	}
+	else{		
+		if (ocx.ControlPtz(13,1,0,96,0))
+		{
+			gxh=0;
+			o.innerText=tb;
+		}
+	}
+}
+function cxz(o,ts,tb){
+	if (gxz==0) 
+	{		
+		if (ocx.ControlPtz(39,0,0,0,0))
+		{
+			gxz=1;
+			o.innerText=ts;
+		}
+	}
+	else{		
+		if (ocx.ControlPtz(40,0,0,0,0))
+		{
+			gxz=0;
+			o.innerText=tb;
+		}	
+	}
+}
+function cxs(o,ts,tb){
+	if (gxs==0) 
+	{		
+		if (ocx.ControlPtz(43,0,0,0,0))
+		{
+			gxs=1;
+			o.innerText=ts;
+		}
+	}
+	else{		
+		if (ocx.ControlPtz(44,0,0,0,0))
+		{
+			gxs=0;
+			o.innerText=tb;
+		}
+	}
+}
+
+function cxj(o,ts,tb){
+	if (gxj==0)
+	{		
+		if (ocx.ControlPtz(47,$('ps').value,0,0,0))
+		{
+			gxj=1;
+			o.innerText=ts;
+		}
+	}
+	else{		
+		if (ocx.ControlPtz(48,$('ps').value,0,0,0))
+		{
+			gxj=0;
+			o.innerText=tb;
+		}
+	}
+}
+
+function cdj(o,ts,tb){
+	var ret;
+	if (gdj==0)
+	{	
+		if (ocx.ControlTalking(1))
+		{
+			gdj=1;
+			o.innerText=ts;
+		}
+	}
+	else{		
+		if (ocx.ControlTalking(0))
+		{
+			gdj=0;
+			o.innerText=tb;
+		}
+	}
+}
+
+function cdg(o,ts,tb){
+	if (gdg==0)
+	{	
+		if (ocx.ControlPtz(14,1,0,0,0))
+		{
+			gdg=1;
+			o.innerText=ts;
+		}
+	}
+	else{		
+		if (ocx.ControlPtz(14,2,0,0,0))
+		{
+			gdg=0;
+			o.innerText=tb;
+		}
+	}	
+}
+
+function sldtopos(sld,step){
+	sld.knob.setStyle('left', sld.toPosition(step));
+}
+function txreset(step){
+	setcolorsv(1,step);
+	setcolorsv(2,step);
+	setcolorsv(3,step);
+	setcolorsv(4,step);
+	sldtopos(gslda,step);
+	sldtopos(gsldb,step);
+	sldtopos(gsldc,step);
+	sldtopos(gsldd,step);
+	setcolors();
+}
+
+function getcolors(){
+	var colors="";
+	colors=ocx.GetColor();
+	var t= new Array();
+	if (colors !="")
+		t=colors.split(',');
+	sldtopos(gslda,parseInt(t[0]));
+	sldtopos(gsldb,parseInt(t[1]));
+	sldtopos(gsldc,parseInt(t[2]));
+	sldtopos(gsldd,parseInt(t[3]));
+	setcolorsv(1,parseInt(t[0]));
+	setcolorsv(2,parseInt(t[1]));
+	setcolorsv(3,parseInt(t[2]));
+	setcolorsv(4,parseInt(t[3]));
+}
+function setcolorsv(f,v){
+		switch (f)
+		{
+			case 1: gca=v;
+					$('ska').title=v;
+					break;
+			case 2: gcb=v;
+					$('skb').title=v;
+					break;
+			case 3: gcc=v;
+					$('skc').title=v;
+					break;
+			case 4: gcd=v;
+					$('skc').title=v;
+					break;
+		}	
+}
+function setcolors(){
+	ocx.SetColor(0,gca,gcb,gcc,gcd);
+}
+
+function showmu(o,cid){
+	if (gcid==cid){
+		closemu();
+	}
+	else{
+		gcid=cid;
+		$('cmu').setProperty('title', cid); 
+		$('cmu').injectAfter($(o).getParent());
+		$('cmu').setStyle('height', 35);	
+	}
+}
+function closemu(){
+	gcid=-1;
+	$('cmu').injectAfter($('chnlist'));
+	$('cmu').setStyle('height', '0'); 	
+}
+function onmu(f){
+	var cid=$('cmu').getProperty('title'); 
+	ocx.ConnectRealVideo(parseInt(cid),f)
+	closemu();
+}
+
+function tl(s){
+	var ret;
+	ret=ocx.Translate(s);
+	return ret;
+}
+
+function reps(str){
+	var strReg1 =/"/g;
+	var strReg2=/'/g;
+	var strReg3=/</g;
+	var strReg4=/>/g;
+	var ret=str.replace(strReg1, "&quot;");
+	ret=ret.replace(strReg2, "&acute;");
+	ret=ret.replace(strReg3, "&lt;;");
+	ret=ret.replace(strReg4, "&gt;");
+	return ret;
+}
+
+function reboot(){
+	var ret;
+	
+	if (confirm(tl('w_rebootconfirm'))){	
+		ret=ocx.Restart();
+		if (ret==0)
+		{
+			alert(tl('w_rebootfail'));
+		}
+		else{
+			ocx.LogoutDevice();
+			loeft();
+		}
+	}
+	
+}
+
+function openall(o,ts,tb){
+	var ret;
+	if (gopenall==0)
+	{	
+		if (ocx.ConnectAllChannle())
+		{
+			gopenall=1;
+			o.innerText=ts;
+		}
+	}
+	else{		
+		if (ocx.DisConnectAllChannel())
+		{
+			gopenall=0;
+			o.innerText=tb;
+		}
+	}
+}
+
+function toggleDisplay(obj){
+	if (obj.getStyle('display')=='none'){
+		obj.setStyle('display','');
+	}
+	else{
+		obj.setStyle('display','none');
+	}
+}
+
+function videoControl(_value){
+    ocx.PlayVideo(_value);
+    
+    if(_value == 3) //停止
+    {
+    	flushData();
+    }
+    else
+	{
+    	flushSpeed();
+	}
+}
+
+
+function flushData(){
+    var currentData=ocx.GetCurChanFulx();
+    var allData=ocx.GetTatolFulx();
+   // currentData=currentData+1;
+     //allData=allData+1;
+    $("xshowdata").setText(tl("C_Channel_Code")+tl("C_Channel_Num")+currentData+"(Kbps) /"+tl("C_Channel_All")+allData+"(Kbps)");
+
+    clearTimeout(gt);
+    gt=setTimeout("flushData()",1000);
+}
+
+
+
+function flushData1(){
+    
+    var allData=ocx.GetTatolFulx();
+    
+     //allData=allData+1;
+    $("xshowdata").setText(tl("C_Channel_Code")+tl("C_Channel_Num")+"0(Kbps) /"+tl("C_Channel_All")+allData+"(Kbps)");
+
+    clearTimeout(gt);
+    gt=setTimeout("flushData1()",1000);
+}
+
+
+ function flushSpeed(){
+    var speedStr=ocx.GetPlaySpeed();
+    clearTimeout(gt);     
+    $("xshowdata").setText(speedStr);
+
+}
+
+
+function inilanguage(){
+	$('xyhm').setText(tl('User Name')+":");
+	$('xmm').setText(tl('Password')+":");
+	$('xlbt').setText(tl('Login'));
+	showLogin();
+
+    $('xchannel').setText(tl('Channel'));
+    $('xvideo').setText(tl('Video'));
+    $('xptz').setText(tl('PTZ'));
+    //$('xdj').setText(tl('AudioTalk'));
+	$('xhf').setText(tl('OpenRec'));
+	$('xbb').setText(tl('Zoom'));
+	$('xbj').setText(tl('Focus'));
+	$('xgq').setText(tl('Iris'));
+
+    $("xgj").setText(tl("Advanced"));
+    $('xytsz').setText(tl('Set'));
+    $('xyzd').setText(tl('Preset'));
+	$('xxuj').setText(tl('Pattern'));
+    $('xfz').setText(tl('F_Flip'));
+    $('xspxz').setText(tl('Auto-Pan'));
+    $('xdjxh').setText(tl('Auto-Tour'));
+	$('xxs').setText(tl('Auto-Scan'));
+	$('xfzk').setText(tl('AUX ON'));
+    $('xdg').setText(tl('LightWiper'));
+    $('xz').setText(tl('w_SetValue'));
+	$('xtld').setProperty('title', tl('Bright')); 
+	$('xtdbd').setProperty('title', tl('Cont')); 
+	$('xtbhd').setProperty('title', tl('Sat')); 
+	$('xtsd').setProperty('title', tl('Hue')); 
+	//$('xcz').setText(tl('Reset'));
+	$('xztlj').setText(tl('PicturePath'));
+	$('xlxlj').setText(tl('RecordPath'));
+	$('xztlj').setProperty('title', tl('SetPicturePath')); 
+	$('xlxlj').setProperty('title', tl('SetRecordPath')); 
+	$('taba1').setText(tl('color'));
+	$('taba2').setText(tl('Other Config'));
+	//$('xfzg').setText(tl('AUX OFF'));
+	$('xytsz').setText(tl('Set'));
+    
+    $('xcqsb').setText(tl('w_reboot'));
+	$('xcqsb').setProperty('title', tl('w_reboottitle'));
+	$('xac').setText(tl('W_ACO'));
+	$('xac').setProperty('title', tl('W_ACO_T'));
+	
+	//$('xp1').setProperty('title', tl('W_P3'));
+	//$('xp2').setProperty('title', tl('W_P2'));
+	//$('xp3').setProperty('title', tl('W_P3'));
+	//$('xp4').setProperty('title', tl('W_P4'));
+	//$('xp5').setProperty('title', tl('W_P5'));
+	
+	//$('xdlfs').setText(tl('type'));
+	//$('xdlfszb').setText(tl('w_muticast'));
+	//$('xladv').setText(tl('C_ADVANCED.'));
+	
+	
+	inilanguage_ex();
+}
+function resize(){
+	//var hmbb;
+	//var wmbb;
+	var wwidth =document.documentElement.clientWidth;
+	var wheight=document.documentElement.clientHeight;
+	if (wheight<670) wheight=670;
+
+
+    var hma=55;
+
+    var hmbb_a=36;
+    var hmbb_b=52;
+
+    var hmba_a=43;
+    var hmba_b=10;
+    var hmba_c=52;
+
+    var hmbc_a=43;
+    var hmbc_b=10;
+    var hmbc_c=52;
+
+
+    var wmba=157;
+    var wmbc=157;
+
+    var hmbb_pla=wheight-hma-hmbb_a-hmbb_b;
+    var hmba_main=wheight-hma-hmba_a-hmba_b-hmba_c;
+    var hmbc_main=wheight-hma-hmbc_a-hmbc_b-hmbc_c;
+
+    var wmbb_pla= (hmbb_pla-40)*4/3
+    var wmb=wmbb_pla+wmba+wmbc;
+
+
+    $('ma').setStyle('width',wmb);
+    $('mad').setStyle('width',wmb-170-34-22-700);
+
+    $('mb').setStyle('width',wmb );
+    $('mbb').setStyle('width',wmbb_pla );
+    $('mbb_pla').setStyle('width',wmbb_pla );
+    $('mbb_pla').setStyle('height',hmbb_pla);
+
+    $('mba_main').setStyle('height',hmba_main);
+    $('mbc_main').setStyle('height',hmbc_main);
+    $('mbc_main_c').setStyle('height',hmbc_main-120-110-130);
+    
+/*
+    var obj=document.getElementById("chnlist");   
+
+    if(obj.scrollHeight>obj.clientHeight||obj.offsetHeight>obj.clientHeight){ 
+    	$$('#chnlist li div').setStyle('width',100);
+    }
+    else
+    	{
+    		$$('#chnlist li div').setStyle('width',120);
+    	}
+*/
+    if(gchsize > 24 || gchsize == 24)
+    	$$('#chnlist li div').setStyle('width',100);
+}
+
+function brightness_onclick()
+{
+	var step = 64;
+	setcolorsv(1,step);
+	sldtopos(gslda,step);
+	setcolors();
+}
+function contrast_onclick()
+{
+	var step = 64;
+	setcolorsv(2,step);
+	sldtopos(gsldb,step);
+	setcolors();
+}
+function satura_onclick()
+{
+	var step = 64;
+	setcolorsv(3,step);
+	sldtopos(gsldc,step);
+	setcolors();
+}
+function hue_onclick()
+{
+	var step = 64;
+	setcolorsv(4,step);
+	sldtopos(gsldd,step);
+	setcolors();
+}
+window.addEvent('resize',function(){
+	resize();
+});
+
+window.addEvent('domready',function(){
+//滑块
+	gsld = new Slider($('sa'), $('sk'), {
+	steps:1000,
+	onComplete:function(step){ocx.SetPlayPos(step);}
+	});
+	
+	gslda = new Slider($('saa'), $('ska'), {
+	steps:128,
+	onChange:function(step){setcolorsv(1,step);setcolors();}
+	});
+
+	gsldb = new Slider($('sab'), $('skb'), {
+	steps:128,
+	onChange:function(step){setcolorsv(2,step);setcolors();}
+	});
+	
+	gsldc = new Slider($('sac'), $('skc'), {
+	steps:128,
+	onChange:function(step){setcolorsv(3,step);setcolors();}
+	});
+	
+	gsldd = new Slider($('sad'), $('skd'), {
+	steps:128,
+	onChange:function(step){setcolorsv(4,step);setcolors();}
+	});
+
+	//gslde = new Slider($('sae'), $('ske'), {
+	//steps:100,
+	//onChange:function(step){;}
+	//});
+
+
+//tab
+	var taba1=$('taba1_a');
+	var taba2=$('taba2_a');
+	taba1.addEvent('click', function(e){
+		new Event(e).stop();
+        if (this.hasClass('atab2'))
+		{
+			this.removeClass(this.className);
+			this.addClass('atab1');
+			taba2.removeClass(taba2.className);
+			taba2.addClass('atab2');
+			$('mbc_main_d_tab1').style.display="";
+			$('mbc_main_d_tab2').style.display="none";
+		}
+	});
+	
+	taba2.addEvent('click', function(e){
+		new Event(e).stop();
+		if (this.hasClass('atab2'))
+		{
+			taba1.removeClass(taba2.className);
+			taba1.addClass('atab2');
+			this.removeClass(this.className);
+			this.addClass('atab1');
+			$('mbc_main_d_tab1').style.display="none";
+			$('mbc_main_d_tab2').style.display="";
+		}
+	});
+	
+//按键响应
+	document.addEvent('keydown', function(event) {
+		event = new Event(event);
+		if (event.key == 'up') ocx.ControlPtz(0,0,$('ps').value,0,0);
+		if (event.key == 'left') ocx.ControlPtz(2,0,$('ps').value,0,0);
+		if (event.key == 'right') ocx.ControlPtz(3,0,$('ps').value,0,0);
+		if (event.key == 'down') ocx.ControlPtz(1,0,$('ps').value,0,0);
+	});
+	document.addEvent('keyup', function(event) {
+		event = new Event(event);
+		if (event.key == 'up') ocx.ControlPtz(0,0,$('ps').value,0,1);
+		if (event.key == 'left') ocx.ControlPtz(2,0,$('ps').value,0,1);
+		if (event.key == 'right') ocx.ControlPtz(3,0,$('ps').value,0,1);
+		if (event.key == 'down') ocx.ControlPtz(1,0,$('ps').value,0,1);
+	});
+
+	inilanguage();
+	getSetting();
+    setUserName($('username'),$('password'));
+    getChnList();
+    gdomready=1;
+});
+</script>
+
+<script language="javascript" for="ocx" event="ReturnWindInfo(wid,cid,ps,sit)">
+	gptz=sit;
+	gwid=wid;
+	if (ps!=0)
+	{
+		if (ps==5 || ps==4){
+	        $('mbb_b_plc').setStyles({position:'relative',top:0});
+		}
+		else{
+			$('mbb_b_plc').setStyles({position:'absolute',top:-10000});
+			$("xshowdata").setText(tl("C_Channel_Code")+tl("C_Channel_Num")+"0(Kbps) /"+tl("C_Channel_All")+"0(Kbps)");
+		}
+		getcolors();
+	}
+
+    if(ps==2||ps==1){
+        flushData();
+    }
+    else if (ps==0){
+        flushData1();
+		$('mbb_b_plc').setStyles({position:'absolute',top:-10000});
+    	$("xshowdata").setText(tl("C_Channel_Code")+tl("C_Channel_Num")+"0(Kbps) /"+tl("C_Channel_All")+"0(Kbps)");
+
+    }
+    if(ps==5){
+        //clearTimeout(gt);
+        flushSpeed();	
+    }
+            
+    setptzs();
+	
+</script>
+
+<script language="javascript" for="ocx" event="ReturnPlayState(pos)">
+	sldtopos(gsld,pos);
+</script>
+
+<script language="javascript" for="ocx" event="StateChanged(ci,ps,wid)">
+	var oc;
+	
+	if (ci !=-1 && ci!=32){
+		oc=$('c' + ci);
+		if (ps==0){            
+            oc.removeClass(oc.className);
+			oc.addClass('cl1');
+		}
+		if (ps==1){
+			oc.removeClass('cl1');
+			oc.addClass('cl2');
+		}
+		if (ps==3){
+			oc.removeClass('cl1');
+			oc.addClass('cl3');
+		}
+	}
+	if (wid == gwid){
+		if (ps==3||ps==5)
+		{
+			$('mbb_b_plc').setStyles({position:'relative',top:0});
+		}
+		else
+			{
+				$('mbb_b_plc').setStyles({position:'absolute',top:-10000});
+				$("xshowdata").setText(tl("C_Channel_Code")+tl("C_Channel_Num")+"0(Kbps) /"+tl("C_Channel_All")+"0(Kbps)");
+			}
+		getcolors();
+	}
+
+    if(ps==1||ps==2){
+        flushData();
+    }
+    if(ps==5){
+        flushSpeed();
+    }
+
+
+
+
+</script>
+<script language="javascript" for="ocx" event="DeviceDisconnected(ip,pt)">
+	loeft();
+</script>
+
+<script language="javascript" for="ocx" event="DeviceChanged(strDevIp, lPort, lType)">
+
+	if (lType==3)
+	{
+		lo();
+		$('l').setStyle('display','none');
+		window.location.href='http://' + strDevIp;
+	}	
+
+</script>
+
+<script type="text/javascript">
+//按退格键不会退出
+ function   document.onkeydown()   
+ {   
+  if(window.event.keyCode   ==   8 )   
+           {   
+      window.event.keyCode   =   0;
+           }
+ } 
+  
+</script> 
+
+</head>
+<body>
+<div id='l'>
+    <div id='lbg'>
+        <div id='lx'>
+            <div id='lxa'>
+                <div id='lxainput'>
+                    <div><span id='xyhm'>username:</span><input type='text' maxlength='20' id='username' onKeyDown="if (event.keyCode==13) event.keyCode=9;"></div>
+                    <div><span id='xmm'>pass:</span><input type="password" maxlength="20" id="password" onKeyDown="if (event.keyCode==13) ld();"></div>
+                </div>
+                <div id='lxabt'>
+                    <div><a id='xlbt' class='lbt' href='javascript:;' onClick='ld()'>Login</a></div>
+                    <div class='cl1'></div><div style='background:url(clx.png)'></div>
+                    <!--<div style='background:url(clbg.png)'></div>-->
+                    <div style='background:url(ma_menu11.png)'></div>
+                    <div style='background:url(ma_menu21.png)'></div>
+                    <div style='background:url(ma_menu31.png)'></div>
+                    <div style='background:url(ma_menu41.png)'></div>
+                    <div style='background:url(ma_menu51.png)'></div>
+                </div>
+		    </div>
+       
+        </div>
+    </div>
+</div>
+
+<div id="m">
+	<div id="ma">
+		<div id='maa_temp'><div id="maa"></div></div>
+		<div id='mab_temp'><div id="mab"></div></div>
+		<div id="mac"></div>
+        <div id="mad"></div>
+        <div id="ma_menu">
+            <a class='menu1' href='javascript:;' onclick="ocx.ShowDeviceConfig()"><span id='xxtpz'></span></a>
+            <a class='menu2' href='javascript:;' onclick="ocx.ShowPlayback()"><span id='xlxcx'></span></a>
+            <a class='menu3' href='javascript:;' onclick="ocx.ShowAlarm()"><span id='xbjsz'></span></a>
+            <a class='menu4' href='javascript:;' onclick="showAbout()"><span id='xgy'></span></a>
+            <a class='menu5' href='javascript:;' onclick="lo()"><span id='xtc'></span></a>
+        </div>
+    </div>
+	
+    <div id="mb">
+		<div id="mba">
+
+            <div id='mba_a'>
+				<div id='mba_aa'><span id='xchannel'></span></div>
+			</div>
+
+            <div id='mba_main' >
+                <div id='mba_main_a'>
+                    <ul id='chnlist'></ul>
+                    <div id='cmu' title=''></div>
+                </div>
+                <div id='mba_main_b'>
+                    <div style="width:157px;height:10px;"></div>
+                    <div class="divgj">
+                        <div class="divgj1"><a class="cbt" href="javascript:;" onclick="openall($('xac'),tl('W_ACC'),tl('W_ACO'))"><span id='xac' class="spancbt" >open all</span></a></div>
+                        <div class="divgj1"><a class="cbt" href="javascript:;" onclick="ocx.QuickOperation(0)"> <span id='xhf' class="spancbt" >localplay</span></a></div>
+                    </div>                  
+                </div>
+             </div>
+
+            <div id='mba_b'></div>
+            <div id='mba_c'></div>
+        </div>
+        
+        <div id="mbb">
+            <div id="mbb_a">
+                <div id='mbb_aa'><span id='xvideo'></span></div>
+                <div id='mbb_ab'>
+                    <div id='mbb_ab_a'></div>
+                    <div id='mbb_ab_b'></div>
+                    <div id='mbb_ab_c'><span id='xshowdata'></span></div>
+                </div>
+            </div>
+            <div id='mbb_pla'><script type="text/javascript" src="olp.js"></script></div>
+
+                <div id='mbb_b'>
+                    <div id='mbb_b_plc'>
+                        <div style='width:560px;height:10px;margin:auto;'>
+                            <div id='sa'>
+                                <div id='sk'></div>
+                            </div>
+
+                            <div id='pc'>
+                                <div style="margin:0 0 0 15px"><a id='xp1' class="p1" href="javascript:;" onmouseover="this.title=tl('Stop')" onclick="videoControl(3)" ></a></div>
+                                <div style="margin:0 0 0 5px"><a id='xp2' class="p2" href="javascript:;" onmouseover="this.title=tl('Pause')" onclick="videoControl(2)"></a></div>
+                                <div style="margin:0 0 0 5px"><a id='xp3' class="p3" href="javascript:;" onmouseover="this.title=tl('Slow')" onclick="videoControl(5)"></a></div>
+                                <div style="margin:0 0 0 5px"><a id='xp4' class="p4" href="javascript:;" onmouseover="this.title=tl('Play')" onclick="videoControl(1)"></a></div>
+                                <div style="margin:0 0 0 5px"><a id='xp5' class="p5" href="javascript:;" onmouseover="this.title=tl('Fast')" onclick="videoControl(4)"></a></div>
+                      <!--          <div style="margin:0 0 0 5px"><a id='xp6' class="p6" href="javascript:;" onmouseover="this.title=tl('PreFrame')" onclick="videoControl(9)"></a></div> -->
+                                <div style="margin:0 0 0 5px"><a id='xp6' class="p6" href="javascript:;" onmouseover="this.title=tl('PreFrame')" ></a></div>                      
+                                <div style="margin:0 0 0 5px"><a id='xp7' class="p7" href="javascript:;" onmouseover="this.title=tl('NextFrame')" onclick="videoControl(8)"></a></div>
+                            </div>
+                            
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        <div id="mbc" >
+            <div id='mbc_a'>
+				<div id='mbc_aa'><span id='xptz'></span></div>
+			</div>
+            <div id='mbc_main' >
+                <div id='mbc_main_a'>
+                        <div><a class="y1" href="javascript:;" onmousedown="ocx.ControlPtz(32,5,$('ps').value,0,0)" onmouseup="ocx.ControlPtz(32,5,$('ps').value,0,1)"></a></div>
+                        <div><a class="y2" href="javascript:;" onmousedown="ocx.ControlPtz(0,0,$('ps').value,0,0)" onmouseup="ocx.ControlPtz(0,0,$('ps').value,0,1)"></a></div>
+                        <div><a class="y3" href="javascript:;" onmousedown="ocx.ControlPtz(33,5,$('ps').value,0,0)" onmouseup="ocx.ControlPtz(33,5,$('ps').value,0,1)"></a></div>
+                        <div><a class="y4" href="javascript:;" onmousedown="ocx.ControlPtz(2,0,$('ps').value,0,0)" onmouseup="ocx.ControlPtz(2,0,$('ps').value,0,1)"></a></div>
+                        <div><a id='cptz' class="y5" href="javascript:;" onclick="cptz()" ></a></div>
+                        <div><a class="y6" href="javascript:;" onmousedown="ocx.ControlPtz(3,0,$('ps').value,0,0)" onmouseup="ocx.ControlPtz(3,0,$('ps').value,0,1)"></a></div>
+                        <div><a class="y7" href="javascript:;" onmousedown="ocx.ControlPtz(34,5,$('ps').value,0,0)" onmouseup="ocx.ControlPtz(34,5,$('ps').value,0,1)"></a></div>
+                        <div><a class="y8" href="javascript:;" onmousedown="ocx.ControlPtz(1,0,$('ps').value,0,0)" onmouseup="ocx.ControlPtz(1,0,$('ps').value,0,1)"></a></div>
+                        <div><a class="y9" href="javascript:;" onmousedown="ocx.ControlPtz(35,5,$('ps').value,0,0)" onmouseup="ocx.ControlPtz(35,5,$('ps').value,0,1)"></a></div>
+                </div>
+ 				<div id='mbc_main_b'>
+                    <div class='ytbg'>
+                        <a class="y1" href="javascript:;"  onmousedown="ocx.ControlPtz(4,0,$('ps').value,0,0)" onmouseup="ocx.ControlPtz(4,0,$('ps').value,0,1)"></a>
+						<div class='ytbg1'><span class="span1" id='xbb' >bb</span></div>
+					    <a class="y2" href="javascript:;" onmousedown="ocx.ControlPtz(5,0,$('ps').value,0,0)" onmouseup="ocx.ControlPtz(5,0,$('ps').value,0,1)"></a>
+                    </div>
+                    <div class="ytbg">
+					    <a class="y1" href="javascript:;" onmousedown="ocx.ControlPtz(6,0,$('ps').value,0,0)" onmouseup="ocx.ControlPtz(6,0,$('ps').value,0,1)"></a>
+						<div class='ytbg1'><span class="span1" id='xbj'>bj</span></div>
+					    <a class="y2" href="javascript:;" onmousedown="ocx.ControlPtz(7,0,$('ps').value,0,0)" onmouseup="ocx.ControlPtz(7,0,$('ps').value,0,1)"></a>
+                    </div>
+                    <div class="ytbg" >
+                        <a class="y1" href="javascript:;" onmousedown="ocx.ControlPtz(8,0,$('ps').value,0,0)" onmouseup="ocx.ControlPtz(8,0,$('ps').value,0,1)"></a>
+						<div class='ytbg1'><span class="span1" id='xgq'>gq</span></div>
+					    <a class="y2" href="javascript:;" onmousedown="ocx.ControlPtz(9,0,$('ps').value,0,0)" onmouseup="ocx.ControlPtz(9,0,$('ps').value,0,1)"></a>
+                     </div>
+
+                    <div class="ytbg">
+                        <div><span class="span2" id='xz'>step</span></div>
+					    <div>
+						    <input class="istep" type="text" id="ps" value="5" maxlength="3" onkeyup="value=value.replace(/[^\d]/g,'')" onbeforepaste="clipboardData.setData('text',clipboardData.getData('text').replace(/[^\d]/g,''))">
+                        </div>
+					</div>
+				</div>
+                
+                <div id='mbc_main_c'>
+                    <div class="divgj">
+                        <div class="divgj1"><span id="xgj" class="span3">adv</span></div>
+                        <div class="divgj1"><a class="cbt" href="javascript:;" onclick="ocx.ShowSetptz()"><span id='xytsz' class="spancbt" >ptzs</span></a></div>
+                    </div>
+                    <div class="divgj">
+                        <div class="divgj1"><a class="cbt" href="javascript:;"  onmouseover="this.title=tl('Preset')" onclick="ocx.ControlPtz(10,0,$('ps').value,0,0)"><span id='xyzd' class="spancbt" >Preset</span></a></div>
+                        <div class="divgj1"><a class="cbt" href="javascript:;" onmouseover="this.title=tl('Pattern')" onclick="cxj($('xxuj'),tl('Stop'),tl('Pattern'))"> <span id='xxuj' class="spancbt" >Pattern</span></a></div>
+                    </div>
+                    <div class="divgj">
+                        <div class="divgj1"><a class="cbt" href="javascript:;" onmouseover="this.title=tl('F_Flip')" onclick="ocx.ControlPtz(50,0,0,0,0);"><span id='xfz' class="spancbt" >Flip</span></a></div>
+                        <div class="divgj1"><a class="cbt" href="javascript:;" onmouseover="this.title=tl('Auto-Pan')" onclick="cxz($('xspxz'),tl('Stop'),tl('Auto-Pan'))"> <span id='xspxz' class="spancbt" >Auto-Pan</span></a></div>
+                    </div>                                        
+                    <div class="divgj">
+                        <div class="divgj1"><a class="cbt" href="javascript:;" onmouseover="this.title=tl('Auto-Scan')"onclick="cxs($('xxs'),tl('Stop'),tl('Auto-Scan'))"><span id='xxs' class="spancbt" >Auto-Scan</span></a></div>
+                        <div class="divgj1"><a class="cbt" href="javascript:;" onmouseover="this.title=tl('Auto-Tour')" onclick="cxh($('xdjxh'),tl('Stop'),tl('Auto-Tour'))"> <span id='xdjxh' class="spancbt" >Auto-Tour</span></a></div>
+                    </div>
+                   <div class="divgj">
+                        <div class="divgj1"><a class="cbt" href="javascript:;" onmouseover="this.title=tl('AUX ON')" onclick="cfz($('xfzk'),tl('AUX OFF'),tl('AUX ON'))"><span id='xfzk' class="spancbt" >AUX ON</span></a></div>
+                        <div class="divgj1"><a class="cbt" href="javascript:;" onmouseover="this.title=tl('LightWiper')" onclick="cdg($('xdg'),tl('Stop'),tl('LightWiper'))"> <span id='xdg' class="spancbt" >LightWiper</span></a></div>
+                    </div>
+                </div>
+
+                <div id='mbc_main_d'>
+                    <div class="divgj">
+                        <a class='atab1' id='taba1_a' href="javascript:;" ><span class="spantab" id='taba1'>color</span></a>
+                        <a class='atab2' id='taba2_a' href="javascript:;" ><span class="spantab" id='taba2'>other</span></a>
+                    </div>
+                    <div id="mbc_main_d_tab">
+                        <div id="mbc_main_d_tab1">
+              <div style="margin:5px 0 0 0;">
+								<div id='xtld' style='width:21px; height:21px; background:url(tx1.png) ' onMouseDown="brightness_onclick()" title='Bright'></div>
+								<div id='saa' class="sax">
+									<div id='ska' class="skx"></div>
+								</div>
+							</div>
+              <div style="margin:5px 0 0 0;">
+								<div id='xtdbd' style='width:21px; height:21px;background:url(tx2.png)' title='Cont' onMouseDown="contrast_onclick()"></div>
+								<div id='sab' class="sax">
+									<div id='skb' class="skx"></div>
+								</div>								
+							</div>
+							<div style="margin:5px 0 0 0;">
+								<div id='xtbhd' style='width:21px; height:21px;background:url(tx3.png)' title='Sat' onMouseDown="satura_onclick()"></div>
+								<div id='sac' class="sax">
+									<div id='skc' class="skx"></div>
+								</div>
+
+							</div>
+							<div style="margin:5px 0 0 0;">
+								<div id='xtsd' style='width:21px; height:21px;background:url(tx4.png)' title='Hue' onMouseDown="hue_onclick()"></div>
+
+								<div id='sad' class="sax">
+									<div id='skd' class="skx"></div>
+								</div>
+							</div>
+                        </div>
+                        <div id="mbc_main_d_tab2">
+                            <div class="divgj">
+                                <div class="divgj1"><a class="cbt2" href="javascript:;" onclick="ocx.SetConfigPath(1);"><span id='xztlj' class="spancbt" >Capture Path</span></a></div>
+                                <div class="divgj1"><a class="cbt2" href="javascript:;" onclick="ocx.SetConfigPath(2);"> <span id='xlxlj' class="spancbt" >Record Path</span></a></div>
+                            </div>
+                            <div class="divgj">
+                                <div class="divgj1"><a class="cbt2" href="javascript:;" onclick="reboot();"><span id='xcqsb' class="spancbt" >Reboot</span></a></div>
+                                
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+            <div id='mbc_b'></div>
+            <div id='mbc_c'></div>
+        </div>
+	</div>
+</div>
+</body>
+</html>

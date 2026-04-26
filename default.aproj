@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<project ver="10" name="VSSWeb" libEmbed="true" icon="res\favicon.ico" ui="win" output="VSSWeb.exe" CompanyName="Yunji" FileDescription="VSSWeb" LegalCopyright="Copyright (C) Yinr 2026" ProductName="VSSWeb" InternalName="VSSWeb" FileVersion="0.0.1.0" ProductVersion="0.0.1.0" publishDir="/dist/" dstrip="true" local="false" ignored="false">
+	<file name="main.aardio" path="main.aardio" comment="main.aardio"/>
+	<folder name="资源文件" path="res" embed="true" local="false" ignored="false">
+		<file name="favicon.ico" path="res\favicon.ico" comment="res\favicon.ico"/>
+	</folder>
+	<folder name="窗体文件" path="dlg" comment="目录" embed="true" local="false" ignored="false">
+		<file name="exportOCX.aardio" path="dlg\exportOCX.aardio" comment="dlg\exportOCX.aardio"/>
+		<file name="native.aardio" path="dlg\native.aardio" comment="dlg\native.aardio"/>
+		<file name="web.aardio" path="dlg\web.aardio" comment="dlg\web.aardio"/>
+	</folder>
+</project>

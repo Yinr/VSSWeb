@@ -1,0 +1,173 @@
+_DSurveillanceCtrl
+________________________________________________________________
+
+DISPID：11
+函数：LoginDevice(string lpstrDeviceIp,int lPort,string lpstrUsername,string lpstrPassword)
+	返回值类型：bool
+	参数名:lpstrDeviceIp 参数类型:string
+	参数名:lPort 参数类型:int
+	参数名:lpstrUsername 参数类型:string
+	参数名:lpstrPassword 参数类型:string
+
+DISPID：12
+函数：ConnectRealVideo(int lChannelNo,int lStreamType)
+	返回值类型：bool
+	参数名:lChannelNo 参数类型:int
+	参数名:lStreamType 参数类型:int
+
+DISPID：13
+函数：DisConnectRealVideo(int lChannelNo)
+	返回值类型：bool
+	参数名:lChannelNo 参数类型:int
+
+DISPID：14
+函数：ControlPtz(int lCommand,int lParm1,int lParm2,int lParm3,int iStop)
+	返回值类型：bool
+	参数名:lCommand 参数类型:int
+	参数名:lParm1 参数类型:int
+	参数名:lParm2 参数类型:int
+	参数名:lParm3 参数类型:int
+	参数名:iStop 参数类型:int
+
+DISPID：15
+函数：SetColor(int lRegionNum,int lBrightness,int lContrast,int lSaturation,int lHue)
+	返回值类型：bool
+	参数名:lRegionNum 参数类型:int
+	参数名:lBrightness 参数类型:int
+	参数名:lContrast 参数类型:int
+	参数名:lSaturation 参数类型:int
+	参数名:lHue 参数类型:int
+
+DISPID：16
+函数：LogoutDevice()
+	返回值类型：bool
+
+DISPID：17
+函数：ShowPlayback()
+	返回值类型：bool
+
+DISPID：18
+函数：SetPlayPos(int posValue)
+	返回值类型：bool
+	参数名:posValue 参数类型:int
+
+DISPID：19
+函数：ConnectPreview(int lPreviewType)
+	返回值类型：bool
+	参数名:lPreviewType 参数类型:int
+
+DISPID：20
+函数：DisConnectPreview()
+	返回值类型：bool
+
+DISPID：21
+函数：ShowDeviceConfig()
+	返回值类型：bool
+
+DISPID：22
+函数：ShowAlarm()
+	返回值类型：bool
+
+DISPID：23
+函数：Translate(string sourceStr)
+	返回值类型：string
+	参数名:sourceStr 参数类型:string
+
+DISPID：24
+函数：GetColor()
+	返回值类型：string
+
+DISPID：25
+函数：SetCurDevice(string strIP,int lPort)
+	返回值类型：bool
+	参数名:strIP 参数类型:string
+	参数名:lPort 参数类型:int
+
+DISPID：26
+函数：PlayVideo(word operationType)
+	返回值类型：bool
+	参数名:operationType 参数类型:word
+
+DISPID：27
+函数：ShowNetUpgrade()
+	返回值类型：bool
+
+DISPID：28
+函数：ControlTalking(int lFlag)
+	返回值类型：bool
+	参数名:lFlag 参数类型:int
+
+DISPID：29
+函数：ShowBurning()
+	返回值类型：bool
+
+DISPID：30
+函数：SetConfigPath(int lPathType)
+	返回值类型：bool
+	参数名:lPathType 参数类型:int
+
+DISPID：32
+函数：QuickOperation(int operation)
+	返回值类型：bool
+	参数名:operation 参数类型:int
+
+DISPID：33
+函数：GetDevConfig(int type)
+	返回值类型：string
+	参数名:type 参数类型:int
+
+DISPID：34
+函数：GetChannelName()
+	返回值类型：string
+
+DISPID：35
+函数：CloseLocalPlay()
+	返回值类型：bool
+
+DISPID：36
+函数：ConnectAllChannle()
+	返回值类型：bool
+
+DISPID：37
+函数：DisConnectAllChannel()
+	返回值类型：bool
+
+DISPID：38
+函数：Restart()
+	返回值类型：bool
+
+DISPID：39
+函数：SetDeviceMode(int type,int value)
+	返回值类型：bool
+	参数名:type 参数类型:int
+	参数名:value 参数类型:int
+
+DISPID：40
+函数：LoginDeviceEx(string lpstrDeviceIp,int lPort,string lpstrUsername,string lpstrPassword,word lSpecCap)
+	返回值类型：bool
+	参数名:lpstrDeviceIp 参数类型:string
+	参数名:lPort 参数类型:int
+	参数名:lpstrUsername 参数类型:string
+	参数名:lpstrPassword 参数类型:string
+	参数名:lSpecCap 参数类型:word
+
+DISPID：41
+函数：GetCurPlayChan()
+	返回值类型：word
+
+DISPID：42
+函数：GetCurChanFulx()
+	返回值类型：int
+
+DISPID：43
+函数：GetTatolFulx()
+	返回值类型：int
+
+DISPID：44
+函数：GetPlaySpeed()
+	返回值类型：string
+
+DISPID：-552
+函数：AboutBox()
+	返回值类型：pointer
+

@@ -1,0 +1,8 @@
+{
+    "description":"初版",
+    "format":".lzma",
+    "main":"VSSWeb.exe",
+    "updater":"VSSWeb.exe",
+    "url":"https://yinr.github.io/VSSWeb/",
+    "version":"0.0.01"
+}

@@ -1,0 +1,106 @@
+// config 配置模块
+// 使用传统 monitor.ini 文件，方便手动编辑。
+// 注意：如果使用 fsys.ini，中文通道名建议把 monitor.ini 保存为 ANSI 编码。
+
+import fsys.ini;
+
+config = {};
+
+// /monitor.ini 表示应用程序根目录下的 monitor.ini
+// 开发期：通常是项目目录
+// 发布后：通常是应用程序根目录
+config.path = io.fullpath("/config.ini");
+
+// 如果你发布后明确想放在 exe 同目录，可以改用：
+// config.path = io.fullpath("~/config.ini");
+
+config.device = {
+    ip = "";
+    username = "";
+    password = "";
+}
+
+config.channelNames = {};
+
+config.pad2 = function(n){
+    return string.format("%02d", n);
+}
+
+config.openIni = function(){
+    return fsys.ini(config.path);
+}
+
+config.loadDevice = function(){
+    var ini = config.openIni();
+
+    config.device.ip = ini.read("device", "ip");
+    if(config.device.ip === null || config.device.ip == "") {
+        config.device.ip = "192.168.0.5";
+        ini.write("device", "ip", config.device.ip);
+    }
+
+    config.device.username = ini.read("device", "username");
+    if(config.device.username === null || config.device.username == "") {
+        config.device.username = "admin";
+        ini.write("device", "username", config.device.username);
+    }
+
+    config.device.password = ini.read("device", "password");
+    if(config.device.password === null) {
+        config.device.password = "";
+        ini.write("device", "password", config.device.password);
+    }
+}
+
+config.saveDevice = function(){
+    var ini = config.openIni();
+
+    ini.write("device", "ip", config.device.ip);
+    ini.write("device", "username", config.device.username);
+    ini.write("device", "password", config.device.password);
+}
+
+config.loadChannelNames = function(){
+    var ini = config.openIni();
+
+    for(i=1;8;1){
+        var key = "ch" ++ config.pad2(i);
+        var defName = config.pad2(i);
+
+        var name = ini.read("channelNames", key);
+
+        if(name === null || name == "") {
+            name = defName;
+            ini.write("channelNames", key, name);
+        }
+
+        config.channelNames[key] = name;
+    }
+}
+
+config.saveChannelNames = function(){
+    var ini = config.openIni();
+
+    for(i=1;8;1){
+        var key = "ch" ++ config.pad2(i);
+        var name = config.channelNames[key];
+
+        if(name === null || name == "") {
+            name = config.pad2(i);
+        }
+
+        ini.write("channelNames", key, name);
+    }
+}
+
+config.loadAll = function(){
+    config.loadDevice();
+    config.loadChannelNames();
+}
+
+config.saveAll = function(){
+    config.saveDevice();
+    config.saveChannelNames();
+}
+
+config.loadAll();

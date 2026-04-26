@@ -1,0 +1,30 @@
+import win.ui;
+import win.dlg.message;
+import config;
+
+/*DSG{{*/
+mainForm = win.form(text="监控 - 用户名：admin";right=1280;bottom=750)
+mainForm.add()
+/*}}*/
+
+import web.form;
+web.form.emulation(11001);
+
+config.loadDevice();
+
+var ip = config.device.ip;
+if(ip === null || ip == "") {
+    ip = "192.168.0.5";
+    config.device.ip = ip;
+    config.saveDevice();
+}
+
+var wb = web.form(mainForm);
+wb.silent = true;
+
+wb.go("http://" ++ ip);
+
+mainForm.center();
+mainForm.show();
+
+return win.loopMessage();

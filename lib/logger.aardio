@@ -1,0 +1,105 @@
+﻿// logger 日志模块
+
+logger = {};
+
+logger.path = io.fullpath("/log.txt");
+logger.text = "";
+logger.edit = null;
+logger.enableFile = true;
+logger.enableUi = true;
+
+logger.init = function(editCtrl, logFilePath){
+    logger.edit = editCtrl;
+
+    if(logFilePath !== null && logFilePath != "") {
+        logger.path = logFilePath;
+    }
+
+    logger.text = "";
+
+    if(logger.edit !== null) {
+        try {
+            logger.edit.text = "";
+        }
+        catch(e) {
+        }
+    }
+}
+
+logger.toText = function(v){
+    if(v === null) {
+        return "<null>";
+    }
+
+    return tostring(v);
+}
+
+logger.save = function(){
+    if(logger.enableFile != true) {
+        return;
+    }
+
+    try {
+        string.save(logger.path, logger.text);
+    }
+    catch(e) {
+    }
+}
+
+logger.write = function(msg){
+    var line = logger.toText(msg);
+
+    if(logger.enableUi == true && logger.edit !== null) {
+        try {
+            logger.edit.print(line);
+            logger.edit.print('\n');
+        }
+        catch(e) {
+        }
+    }
+
+    logger.text = logger.text ++ line ++ '\n';
+    logger.save();
+}
+
+logger.clear = function(){
+    logger.text = "";
+
+    if(logger.edit !== null) {
+        try {
+            logger.edit.text = "";
+        }
+        catch(e) {
+        }
+    }
+
+    logger.save();
+}
+
+logger.status = function(msg){
+    logger.write("[STATUS] " ++ logger.toText(msg));
+}
+
+logger.error = function(msg){
+    logger.write("[ERR] " ++ logger.toText(msg));
+}
+
+logger.js = function(msg){
+    logger.write("[JS] " ++ logger.toText(msg));
+}
+
+logger.event = function(msg){
+    logger.write("[EVENT] " ++ logger.toText(msg));
+}
+
+logger.callback = function(msg){
+    logger.write("[CALLBACK] " ++ logger.toText(msg));
+}
+
+logger.call = function(msg){
+    logger.write("[CALL] " ++ logger.toText(msg));
+}
+
+logger.ret = function(msg){
+    logger.write("[RET ] " ++ logger.toText(msg));
+}
