@@ -36,7 +36,7 @@ videoHost={cls="static";left=10;top=10;right=900;bottom=640;ah=1;aw=1;db=1;dl=1;
 import fsys.update.simpleMain;
 if( fsys.update.simpleMain(
 	"VSSWeb",
-	"https://yinr.github.io/VSSWeb/version.txt", /*网址也可以改用目录名，并使用服务端代码动态返回version.txt*/
+	"https://vssweb.lolicon.in/version.txt", /*网址也可以改用目录名，并使用服务端代码动态返回version.txt*/
 	"/download/update-files", /*绿色软件建议改为 io.appData("/软件厂商名/软件名字/update-files") */
 	function(version,description,status){
 		/*
