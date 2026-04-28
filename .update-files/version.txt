@@ -1,8 +1,8 @@
 {
-    "description":"增加更新提示",
+    "description":"优化设置界面",
     "format":".lzma",
     "main":"VSSWeb.exe",
     "updater":"VSSWeb.exe",
     "url":"https://vssweb.lolicon.in/",
-    "version":"0.0.3.1"
+    "version":"0.1"
 }
