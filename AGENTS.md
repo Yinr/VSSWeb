@@ -33,3 +33,10 @@
 - 运行前确认本机已安装并注册 `CLSID:D639FA00-CB11-4f67-82F2-C0A87EAECD13` 对应的 IVSWeb ActiveX，且 aardio 进程位数与控件一致。
 - 修改后运行 aardio 工程，手动检查：控件创建、登录、自动打开全部通道、单通道开关、云台按钮、设置弹窗回写 `config.ini`、退出时断开。
 - 验证 ActiveX 方法或签名时，运行 `dlg/exportOCX.aardio` 重新导出类型信息，再和原始页面调用交叉确认。
+
+## 发布
+- 执行版本发布、创建 tag 或准备 GitHub Release 时，必须先阅读并严格遵循 `docs/RELEASE.md`。
+- 发布前必须校验 `default.aproj` 的 `FileVersion`、`ProductVersion` 与 `.update-files/version.txt` 的版本语义一致。
+- `.update-files/` 是更新发布包来源，`dist/` 仅用于本地运行验证，不作为更新发布来源。
+- 推送 `v*` tag 会触发 `.github/workflows/release.yml` 自动创建 GitHub Release，正文来自 `CHANGELOG.md`，附件来自 `.update-files/`。
+- 如果当前版本相对上一个 tag 没有有效变更，或版本号没有递增，应停止发布并提醒用户。
