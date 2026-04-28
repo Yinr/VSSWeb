@@ -6,8 +6,10 @@ import channel;
 import netcheck;
 import fsys.version;
 import process;
+
+var baseTitle = "监控";
 /*DSG{{*/
-mainForm = win.form(text="监控";left=0;top=0;right=1190;bottom=650)
+mainForm = win.form(text=baseTitle;left=0;top=0;right=1190;bottom=650)
 mainForm.add(
 btnAbout={cls="button";text="关于";left=1106;top=530;right=1165;bottom=560;dr=1;z=25};
 btnAlarm={cls="button";text="警报";left=1044;top=530;right=1102;bottom=560;dr=1;z=24};
@@ -47,6 +49,7 @@ if( fsys.update.simpleMain(
 		if(status == "ready"){
 			var verInfo = fsys.version.getInfo(io._exepath);
 			var currentVersion = verInfo ? tostring(verInfo.productVersion) : "未知版本";
+			mainForm.text = baseTitle ++ (currentVersion != "未知版本" ? " v" ++ currentVersion : "") ++ " [新版本 v" ++ version ++ "]";
 
 			var msg = '发现新版本！\n\n当前版本：' ++ currentVersion ++ '\n最新版本：' ++ version;
 			if(description && description != ""){
@@ -62,7 +65,7 @@ if( fsys.update.simpleMain(
 var verInfo = fsys.version.getInfo(io._exepath);
 var currentVersion = verInfo ? tostring(verInfo.productVersion) : "";
 if(currentVersion != "") {
-    mainForm.text = mainForm.text ++ " v" ++ currentVersion;
+    mainForm.text = baseTitle ++ " v" ++ currentVersion;
 }
 
 web.form.emulation(11001);
