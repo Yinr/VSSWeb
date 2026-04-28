@@ -1,0 +1,45 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check release inputs
+        run: |
+          set -euo pipefail
+          test -f CHANGELOG.md
+          test -f .update-files/version.txt
+          test -f .update-files/files/VSSWeb.exe.lzma
+
+      - name: Extract changelog entry
+        run: python3 scripts/release/extract_changelog.py "${{ github.ref_name }}"
+
+      - name: Check update package version
+        run: python3 scripts/release/check_update_version.py "${{ github.ref_name }}"
+
+      - name: Extract executable asset
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          xz --format=lzma -dc .update-files/files/VSSWeb.exe.lzma > "VSSWeb-${TAG_NAME}.exe"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          body_path: release-body.md
+          files: |
+            VSSWeb-${{ github.ref_name }}.exe
+            .update-files/version.txt
