@@ -3,6 +3,7 @@ import web.form;
 import config;
 import logger;
 import channel;
+import fsys.version;
 /*DSG{{*/
 mainForm = win.form(text="监控";left=0;top=0;right=1190;bottom=650)
 mainForm.add(
@@ -41,7 +42,6 @@ if( fsys.update.simpleMain(
 	"/download/update-files", /*绿色软件建议改为 io.appData("/软件厂商名/软件名字/update-files") */
 	function(version,description,status){
 		if(status == "ready"){
-			import fsys.version;
 			var verInfo = fsys.version.getInfo(io._exepath);
 			var currentVersion = verInfo ? tostring(verInfo.productVersion) : "未知版本";
 
@@ -54,6 +54,12 @@ if( fsys.update.simpleMain(
 		}
 	} )){
 	return 0; //必须退出 main.aardio 以启动更新
+}
+
+var verInfo = fsys.version.getInfo(io._exepath);
+var currentVersion = verInfo ? tostring(verInfo.productVersion) : "";
+if(currentVersion != "") {
+    mainForm.text = mainForm.text ++ " v" ++ currentVersion;
 }
 
 web.form.emulation(11001);
@@ -854,19 +860,18 @@ activeXMenu = function(funcName, label, needLogin){
 }
 
 showSettingDialog = function(){
-    var dlg = mainForm.loadForm("\dlg\setting.aardio");
-    dlg.doModal();
-
-    // 重新加载配置
-    loadConfig();
-    if(hasFullConfig()) {
-        logoutDevice();
-        mainForm.setTimeout(
-            function(){
-                loadMiniHtml(true);
-            },
-            500
-        );
+    var re = mainForm.loadForm("\dlg\setting.aardio").doModal();
+    if(re == 1) {
+        loadConfig();
+        if(hasFullConfig()) {
+            logoutDevice();
+            mainForm.setTimeout(
+                function(){
+                    loadMiniHtml(true);
+                },
+                500
+            );
+        }
     }
 }
 

@@ -19,7 +19,8 @@ dlg.add(
     lblUser = { cls = "static"; text = "用户名"; left = 30; top = 75; right = 110; bottom = 100;};
     editUser = { cls = "edit"; left = 120; top = 73; right = 380; bottom = 101; edge = 1;};
     lblPass = {cls = "static"; text = "密码"; left = 30; top = 120; right = 110; bottom = 145;};
-    editPass = {cls = "edit"; left = 120; top = 118; right = 380; bottom = 146; edge = 1; password = 1;};
+    editPass = {cls = "edit"; left = 120; top = 118; right = 320; bottom = 146; edge = 1; password = 1;};
+    btnShowPass = {cls = "button"; text = "显示"; left = 330; top = 118; right = 380; bottom = 146;};
     btnSave = {cls = "button"; text = "保存"; left = 120; top = 170; right = 230; bottom = 205;};
     btnCancel = {cls = "button"; text = "取消"; left = 270; top = 170; right = 380; bottom = 205;}
 )
@@ -43,33 +44,52 @@ if(dlg.editPass.text === null) {
     dlg.editPass.text = "";
 }
 
+var oldIp = dlg.editIp.text;
+var oldUser = dlg.editUser.text;
+var oldPass = dlg.editPass.text;
+var passwordChar = dlg.editPass.passwordChar;
+
+dlg.btnShowPass.oncommand = function(){
+    if(dlg.editPass.passwordChar) {
+        dlg.editPass.passwordChar = null;
+        dlg.btnShowPass.text = "隐藏";
+    }
+    else {
+        dlg.editPass.passwordChar = passwordChar;
+        dlg.btnShowPass.text = "显示";
+    }
+}
+
 // 保存按钮事件
 dlg.btnSave.oncommand = function(){
     var ip = dlg.editIp.text;
     var username = dlg.editUser.text;
     var password = dlg.editPass.text;
-    
-    // 默认值处理
+
     if(ip == "") {
         ip = "192.168.0.5";
     }
-    
+
     if(username == "") {
         username = "admin";
     }
-    
-    // 保存到配置
-    config.device.ip = ip;
-    config.device.username = username;
-    config.device.password = password;
-    config.saveDevice();
-    
-    dlg.close();
+
+    if(ip == oldIp && username == oldUser && password == oldPass) {
+        dlg.endModal();
+    }
+    else {
+        config.device.ip = ip;
+        config.device.username = username;
+        config.device.password = password;
+        config.saveDevice();
+
+        dlg.endModal(1);
+    }
 }
 
 // 取消按钮事件
 dlg.btnCancel.oncommand = function(){
-    dlg.close();
+    dlg.endModal();
 }
 
 // 显示对话框（模态）
