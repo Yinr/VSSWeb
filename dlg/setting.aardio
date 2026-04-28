@@ -1,0 +1,76 @@
+import win.ui;
+import config;
+
+/*DSG{{*/
+var dlg = win.form(
+    parent = owner;
+    text = "连接设置";
+    left = -1;
+    top = -1;
+    right = 420;
+    bottom = 230;
+    max = false;
+    min = false;
+)
+
+dlg.add(
+    lblIp = {cls = "static"; text = "连接地址"; left = 30; top = 30; right = 110; bottom = 55;};
+    editIp = {cls = "edit"; left = 120; top = 28; right = 380; bottom = 56; edge = 1;};
+    lblUser = { cls = "static"; text = "用户名"; left = 30; top = 75; right = 110; bottom = 100;};
+    editUser = { cls = "edit"; left = 120; top = 73; right = 380; bottom = 101; edge = 1;};
+    lblPass = {cls = "static"; text = "密码"; left = 30; top = 120; right = 110; bottom = 145;};
+    editPass = {cls = "edit"; left = 120; top = 118; right = 380; bottom = 146; edge = 1; password = 1;};
+    btnSave = {cls = "button"; text = "保存"; left = 120; top = 170; right = 230; bottom = 205;};
+    btnCancel = {cls = "button"; text = "取消"; left = 270; top = 170; right = 380; bottom = 205;}
+)
+/*}}*/
+
+// 加载当前配置到对话框
+config.loadDevice();
+
+dlg.editIp.text = config.device.ip;
+if(dlg.editIp.text === null || dlg.editIp.text == "") {
+    dlg.editIp.text = "192.168.0.5";
+}
+
+dlg.editUser.text = config.device.username;
+if(dlg.editUser.text === null || dlg.editUser.text == "") {
+    dlg.editUser.text = "admin";
+}
+
+dlg.editPass.text = config.device.password;
+if(dlg.editPass.text === null) {
+    dlg.editPass.text = "";
+}
+
+// 保存按钮事件
+dlg.btnSave.oncommand = function(){
+    var ip = dlg.editIp.text;
+    var username = dlg.editUser.text;
+    var password = dlg.editPass.text;
+    
+    // 默认值处理
+    if(ip == "") {
+        ip = "192.168.0.5";
+    }
+    
+    if(username == "") {
+        username = "admin";
+    }
+    
+    // 保存到配置
+    config.device.ip = ip;
+    config.device.username = username;
+    config.device.password = password;
+    config.saveDevice();
+    
+    dlg.close();
+}
+
+// 取消按钮事件
+dlg.btnCancel.oncommand = function(){
+    dlg.close();
+}
+
+// 显示对话框（模态）
+return dlg;

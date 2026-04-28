@@ -1,0 +1,61 @@
+// channel 通道管理模块
+// 封装通道名称管理和按钮状态更新逻辑
+
+import config;
+
+channel = {};
+
+// 加载通道名称（从 config.ini）
+channel.loadNames = function(chNames){
+    config.loadChannelNames();
+    
+    for(i=1;8;1){
+        var key = "ch" ++ string.format("%02d", i);
+        var name = config.channelNames[key];
+        
+        if(name === null || name == "") {
+            name = string.format("%02d", i);
+        }
+        
+        chNames[i] = name;
+    }
+}
+
+// 设置单个通道按钮文本
+// chButtons: 按钮数组, chId: 0-7, opened: true/false, chNames: 通道名数组
+channel.setButtonText = function(chButtons, chId, opened, chNames){
+    var idx = chId + 1;
+    var name = chNames[idx];
+    
+    if(name === null || name == "") {
+        name = string.format("%02d", idx);
+    }
+    
+    if(opened) {
+        chButtons[idx].text = "关闭 " ++ name;
+    }
+    else {
+        chButtons[idx].text = "打开 " ++ name;
+    }
+}
+
+// 清除所有通道状态
+channel.clearAllState = function(chOpened, chButtons, chNames){
+    for(i=1;8;1){
+        chOpened[i] = false;
+        channel.setButtonText(chButtons, i - 1, false, chNames);
+    }
+}
+
+// 切换通道状态
+// chId: 0-7, chOpened: 状态数组, openFunc/closeFunc: 回调函数
+channel.toggle = function(chId, chOpened, openFunc, closeFunc){
+    var idx = chId + 1;
+    
+    if(chOpened[idx]) {
+        closeFunc(chId);
+    }
+    else {
+        openFunc(chId);
+    }
+}

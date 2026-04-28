@@ -2,6 +2,7 @@ import win.ui;
 import web.form;
 import config;
 import logger;
+import channel;
 /*DSG{{*/
 mainForm = win.form(text="监控";left=0;top=0;right=1190;bottom=650)
 mainForm.add(
@@ -71,9 +72,9 @@ var cfg = {
 }
 
 var wb = null;
-var wbReady = 0;
-var isLoggedIn = 0;
-var pendingAutoOpenAll = 0;
+var wbReady = false;
+var isLoggedIn = false;
+var pendingAutoOpenAll = false;
 
 var chButtons = {};
 var chOpened = {};
@@ -82,26 +83,7 @@ var currentWid = null;
 var winMap = {};
 var winState = {};
 
-toText = function(v){
-    if(v === null) {
-        return "<null>";
-    }
 
-    return tostring(v);
-}
-
-pad2 = function(n){
-    return string.format("%02d", n);
-}
-
-isTrueValue = function(v){
-    var s = string.lower(toText(v));
-
-    if(s == "true") return 1;
-    if(s == "1") return 1;
-
-    return 0;
-}
 
 setStatus = function(msg){
     logger.status(msg);
@@ -109,13 +91,13 @@ setStatus = function(msg){
     var s = "状态：" ++ msg;
 
     if(currentWid !== null) {
-        s = s ++ '\r\n当前窗口：' ++ toText(currentWid);
+        s = s ++ '\r\n当前窗口：' ++ tostring(currentWid);
 
-        var key = "w" ++ toText(currentWid);
+        var key = "w" ++ tostring(currentWid);
         var cid = winMap[key];
 
         if(cid !== null && cid >= 0) {
-            s = s ++ " / 通道 " ++ pad2(cid + 1);
+            s = s ++ " / 通道 " ++ string.format("%02d", cid + 1);
         }
         else {
             s = s ++ " / 空";
@@ -151,51 +133,12 @@ saveConfig = function(){
 
     config.saveDevice();
 }
-
-loadChannelNames = function(){
-    config.loadChannelNames();
-
-    for(i=1;8;1){
-        var key = "ch" ++ pad2(i);
-        var name = config.channelNames[key];
-
-        if(name === null || name == "") {
-            name = pad2(i);
-        }
-
-        chNames[i] = name;
-    }
-}
-
 hasFullConfig = function(){
-    if(cfg.ip === null || cfg.ip == "") return 0;
-    if(cfg.username === null || cfg.username == "") return 0;
-    if(cfg.password === null || cfg.password == "") return 0;
+    if(cfg.ip === null || cfg.ip == "") return false;
+    if(cfg.username === null || cfg.username == "") return false;
+    if(cfg.password === null || cfg.password == "") return false;
 
-    return 1;
-}
-
-setChButtonText = function(chId, opened){
-    var idx = chId + 1;
-    var name = chNames[idx];
-
-    if(name === null || name == "") {
-        name = pad2(idx);
-    }
-
-    if(opened == 1) {
-        chButtons[idx].text = "关闭 " ++ name;
-    }
-    else {
-        chButtons[idx].text = "打开 " ++ name;
-    }
-}
-
-clearAllChannelState = function(){
-    for(i=1;8;1){
-        chOpened[i] = 0;
-        setChButtonText(i - 1, 0);
-    }
+    return true;
 }
 
 clearWindowMapByChannel = function(chId){
@@ -204,7 +147,7 @@ clearWindowMapByChannel = function(chId){
 
         if(winMap[key] === chId) {
             winMap[key] = -1;
-            winState[key] = 0;
+            winState[key] = false;
         }
     }
 }
@@ -534,18 +477,18 @@ setupExternal = function(){
         };
 
         Log = function(msg){
-            logger.js(toText(msg));
+            logger.js(tostring(msg));
         };
 
         LoginResult = function(ret){
-            logger.callback("LoginResult=" ++ toText(ret));
+            logger.callback("LoginResult=" ++ tostring(ret));
 
-            if(isTrueValue(ret) == 1) {
-                isLoggedIn = 1;
+            if(!!ret) {
+                isLoggedIn = true;
                 setStatus("登录成功：" ++ cfg.ip);
 
-                if(pendingAutoOpenAll == 1) {
-                    pendingAutoOpenAll = 0;
+                if(pendingAutoOpenAll) {
+                    pendingAutoOpenAll = false;
 
                     mainForm.setTimeout(
                         function(){
@@ -556,53 +499,53 @@ setupExternal = function(){
                 }
             }
             else {
-                isLoggedIn = 0;
-                pendingAutoOpenAll = 0;
-                setStatus("登录失败：ActiveX 返回 " ++ toText(ret));
+                isLoggedIn = false;
+                pendingAutoOpenAll = false;
+                setStatus("登录失败：ActiveX 返回 " ++ tostring(ret));
             }
         };
 
         OpenAllResult = function(ret){
-            logger.callback("OpenAllResult=" ++ toText(ret));
+            logger.callback("OpenAllResult=" ++ tostring(ret));
 
-            if(isTrueValue(ret) == 1) {
+            if(!!ret) {
                 setStatus("已请求打开全部通道");
             }
             else {
-                setStatus("打开全部通道失败：" ++ toText(ret));
+                setStatus("打开全部通道失败：" ++ tostring(ret));
             }
         };
 
         CloseAllResult = function(ret){
-            logger.callback("CloseAllResult=" ++ toText(ret));
+            logger.callback("CloseAllResult=" ++ tostring(ret));
 
-            if(isTrueValue(ret) == 1) {
-                clearAllChannelState();
+            if(!!ret) {
+                channel.clearAllState(chOpened, chButtons, chNames);
                 currentWid = null;
                 winMap = {};
                 winState = {};
                 setStatus("已请求关闭全部通道");
             }
             else {
-                setStatus("关闭全部通道失败：" ++ toText(ret));
+                setStatus("关闭全部通道失败：" ++ tostring(ret));
             }
         };
 
         StateChanged = function(ci, ps, wid){
             logger.event(
                 "StateChanged"
-                ++ " ci=" ++ toText(ci)
-                ++ " ch=" ++ (ci >= 0 && ci <= 7 ? pad2(ci + 1) : "-")
-                ++ " ps=" ++ toText(ps)
-                ++ " wid=" ++ toText(wid)
+                ++ " ci=" ++ tostring(ci)
+                ++ " ch=" ++ (ci >= 0 && ci <= 7 ? string.format("%02d", ci + 1) : "-")
+                ++ " ps=" ++ tostring(ps)
+                ++ " wid=" ++ tostring(wid)
             );
 
             if(ci == -1 || ci == 32) {
                 if(ps == 3 || ps == 5) {
-                    setStatus("当前窗口进入回放/播放控制状态 ps=" ++ toText(ps));
+                    setStatus("当前窗口进入回放/播放控制状态 ps=" ++ tostring(ps));
                 }
                 else {
-                    setStatus("特殊播放状态 ci=" ++ toText(ci) ++ " ps=" ++ toText(ps));
+                    setStatus("特殊播放状态 ci=" ++ tostring(ci) ++ " ps=" ++ tostring(ps));
                 }
 
                 return;
@@ -610,45 +553,45 @@ setupExternal = function(){
 
             if(ci >= 0 && ci <= 7) {
                 if(ps == 1 || ps == 2) {
-                    chOpened[ci + 1] = 1;
-                    setChButtonText(ci, 1);
-                    setStatus("通道 " ++ pad2(ci + 1) ++ " 正在播放 ps=" ++ toText(ps));
+                    chOpened[ci + 1] = true;
+                    channel.setButtonText(chButtons, ci, true, chNames);
+                    setStatus("通道 " ++ string.format("%02d", ci + 1) ++ " 正在播放 ps=" ++ tostring(ps));
                 }
                 elseif(ps == 0) {
-                    chOpened[ci + 1] = 0;
-                    setChButtonText(ci, 0);
+                    chOpened[ci + 1] = false;
+                    channel.setButtonText(chButtons, ci, false, chNames);
                     clearWindowMapByChannel(ci);
-                    setStatus("通道 " ++ pad2(ci + 1) ++ " 已关闭");
+                    setStatus("通道 " ++ string.format("%02d", ci + 1) ++ " 已关闭");
                 }
                 elseif(ps == 3) {
-                    chOpened[ci + 1] = 0;
-                    setChButtonText(ci, 0);
+                    chOpened[ci + 1] = false;
+                    channel.setButtonText(chButtons, ci, false, chNames);
                     clearWindowMapByChannel(ci);
-                    setStatus("通道 " ++ pad2(ci + 1) ++ " 进入非实时预览状态 ps=3，已重置按钮");
+                    setStatus("通道 " ++ string.format("%02d", ci + 1) ++ " 进入非实时预览状态 ps=3，已重置按钮");
                 }
                 else {
-                    setStatus("通道 " ++ pad2(ci + 1) ++ " 未处理状态 ps=" ++ toText(ps));
+                    setStatus("通道 " ++ string.format("%02d", ci + 1) ++ " 未处理状态 ps=" ++ tostring(ps));
                 }
             }
             else {
-                setStatus("通道状态变化 ci=" ++ toText(ci) ++ " ps=" ++ toText(ps));
+                setStatus("通道状态变化 ci=" ++ tostring(ci) ++ " ps=" ++ tostring(ps));
             }
         };
 
         ReturnWindInfo = function(wid, cid, ps, sit){
             logger.event(
                 "ReturnWindInfo"
-                ++ " wid=" ++ toText(wid)
-                ++ " cid=" ++ toText(cid)
-                ++ " ch=" ++ (cid >= 0 && cid <= 7 ? pad2(cid + 1) : "-")
-                ++ " ps=" ++ toText(ps)
-                ++ " sit=" ++ toText(sit)
+                ++ " wid=" ++ tostring(wid)
+                ++ " cid=" ++ tostring(cid)
+                ++ " ch=" ++ (cid >= 0 && cid <= 7 ? string.format("%02d", cid + 1) : "-")
+                ++ " ps=" ++ tostring(ps)
+                ++ " sit=" ++ tostring(sit)
             );
 
             currentWid = wid;
 
             if(wid !== null) {
-                var key = "w" ++ toText(wid);
+                var key = "w" ++ tostring(wid);
 
                 if(ps == 1 || ps == 2) {
                     winMap[key] = cid;
@@ -668,40 +611,40 @@ setupExternal = function(){
             }
 
             if(ps == 4 || ps == 5) {
-                setStatus("当前窗口处于录像/回放状态 ps=" ++ toText(ps));
+                setStatus("当前窗口处于录像/回放状态 ps=" ++ tostring(ps));
             }
             else {
                 setStatus(
-                    "窗口信息 wid=" ++ toText(wid)
-                    ++ " cid=" ++ toText(cid)
-                    ++ " ps=" ++ toText(ps)
+                    "窗口信息 wid=" ++ tostring(wid)
+                    ++ " cid=" ++ tostring(cid)
+                    ++ " ps=" ++ tostring(ps)
                 );
             }
         };
 
         DeviceDisconnected = function(ip, pt){
-            logger.event("DeviceDisconnected ip=" ++ toText(ip) ++ " pt=" ++ toText(pt));
+            logger.event("DeviceDisconnected ip=" ++ tostring(ip) ++ " pt=" ++ tostring(pt));
 
-            isLoggedIn = 0;
-            clearAllChannelState();
+            isLoggedIn = false;
+            channel.clearAllState(chOpened, chButtons, chNames);
             currentWid = null;
             winMap = {};
             winState = {};
-            setStatus("设备断开：" ++ toText(ip));
+            setStatus("设备断开：" ++ tostring(ip));
         };
 
         DeviceChanged = function(strDevIp, lPort, lType){
             logger.event(
                 "DeviceChanged"
-                ++ " ip=" ++ toText(strDevIp)
-                ++ " port=" ++ toText(lPort)
-                ++ " type=" ++ toText(lType)
+                ++ " ip=" ++ tostring(strDevIp)
+                ++ " port=" ++ tostring(lPort)
+                ++ " type=" ++ tostring(lType)
             );
 
             setStatus(
-                "设备变化 ip=" ++ toText(strDevIp)
-                ++ " port=" ++ toText(lPort)
-                ++ " type=" ++ toText(lType)
+                "设备变化 ip=" ++ tostring(strDevIp)
+                ++ " port=" ++ tostring(lPort)
+                ++ " type=" ++ tostring(lType)
             );
         };
     }
@@ -709,15 +652,15 @@ setupExternal = function(){
 
 loadMiniHtml = function(autoConnect){
     loadConfig();
-    loadChannelNames();
+    channel.loadNames(chNames);
 
-    wbReady = 0;
-    isLoggedIn = 0;
-    pendingAutoOpenAll = 0;
+    wbReady = false;
+    isLoggedIn = false;
+    pendingAutoOpenAll = false;
     currentWid = null;
     winMap = {};
     winState = {};
-    clearAllChannelState();
+    channel.clearAllState(chOpened, chButtons, chNames);
 
     logger.clear();
 
@@ -741,14 +684,14 @@ loadMiniHtml = function(autoConnect){
 
     mainForm.setTimeout(
         function(){
-            wbReady = 1;
+            wbReady = true;
             setStatus("ActiveX 已准备好");
 
             logger.call("JS ping()");
             var pingRet = callJs("ping");
-            logger.ret("ping=" ++ toText(pingRet));
+            logger.ret("ping=" ++ tostring(pingRet));
 
-            if(autoConnect == 1) {
+            if(autoConnect) {
                 autoLoginAndOpenAll();
             }
         },
@@ -759,27 +702,27 @@ loadMiniHtml = function(autoConnect){
 loginDevice = function(){
     loadConfig();
 
-    if(wbReady != 1) {
+    if(!wbReady) {
         setStatus("ActiveX 尚未准备好");
-        return 0;
+        return false;
     }
 
-    if(hasFullConfig() != 1) {
+    if(!hasFullConfig()) {
         setStatus("未设置完整连接信息，请点击“设置”");
-        return 0;
+        return false;
     }
 
     setStatus("正在连接：" ++ cfg.ip);
 
     logger.call("JS loginFromExternal()");
     var r = callJs("loginFromExternal");
-    logger.ret("loginFromExternal=" ++ toText(r));
+    logger.ret("loginFromExternal=" ++ tostring(r));
 
-    return 1;
+    return true;
 }
 
 autoLoginAndOpenAll = function(){
-    pendingAutoOpenAll = 1;
+    pendingAutoOpenAll = true;
     loginDevice();
 }
 
@@ -788,14 +731,14 @@ logoutDevice = function(){
 
     try {
         var r = callJs("logoutDevice");
-        logger.ret("logoutDevice=" ++ toText(r));
+        logger.ret("logoutDevice=" ++ tostring(r));
     }
     catch(e) {
     }
 
-    isLoggedIn = 0;
-    pendingAutoOpenAll = 0;
-    clearAllChannelState();
+    isLoggedIn = false;
+    pendingAutoOpenAll = false;
+    channel.clearAllState(chOpened, chButtons, chNames);
     currentWid = null;
     winMap = {};
     winState = {};
@@ -803,78 +746,78 @@ logoutDevice = function(){
 }
 
 openAllChannels = function(){
-    if(wbReady != 1) {
+    if(!wbReady) {
         setStatus("ActiveX 尚未准备好");
         return;
     }
 
-    if(isLoggedIn != 1) {
-        pendingAutoOpenAll = 1;
+    if(!isLoggedIn) {
+        pendingAutoOpenAll = true;
         loginDevice();
         return;
     }
 
     logger.call("JS openAll()");
     var r = callJs("openAll");
-    logger.ret("openAll=" ++ toText(r));
+    logger.ret("openAll=" ++ tostring(r));
 }
 
 closeAllChannels = function(){
-    if(wbReady != 1) {
+    if(!wbReady) {
         setStatus("ActiveX 尚未准备好");
         return;
     }
 
     logger.call("JS closeAll()");
     var r = callJs("closeAll");
-    logger.ret("closeAll=" ++ toText(r));
+    logger.ret("closeAll=" ++ tostring(r));
 }
 
 openChannel = function(chId){
-    if(wbReady != 1) {
+    if(!wbReady) {
         setStatus("ActiveX 尚未准备好");
         return;
     }
 
-    if(isLoggedIn != 1) {
-        pendingAutoOpenAll = 0;
+    if(!isLoggedIn) {
+        pendingAutoOpenAll = false;
         loginDevice();
         return;
     }
 
     logger.call("JS openChannel(" ++ tostring(chId) ++ ")");
     var r = callJs("openChannel", chId);
-    logger.ret("openChannel=" ++ toText(r));
+    logger.ret("openChannel=" ++ tostring(r));
 
-    setStatus("已请求打开通道 " ++ pad2(chId + 1));
+    setStatus("已请求打开通道 " ++ string.format("%02d", chId + 1));
 }
 
 closeChannel = function(chId){
-    if(wbReady != 1) {
+    if(!wbReady) {
         setStatus("ActiveX 尚未准备好");
         return;
     }
 
     logger.call("JS closeChannel(" ++ tostring(chId) ++ ")");
     var r = callJs("closeChannel", chId);
-    logger.ret("closeChannel=" ++ toText(r));
+    logger.ret("closeChannel=" ++ tostring(r));
 
-    if(isTrueValue(r) == 1) {
-        setStatus("已请求关闭通道 " ++ pad2(chId + 1));
+    if(!!r) {
+        setStatus("已请求关闭通道 " ++ string.format("%02d", chId + 1));
     }
     else {
-        chOpened[chId + 1] = 0;
-        setChButtonText(chId, 0);
+        chOpened[chId + 1] = false;
+        channel.setButtonText(chButtons, chId, false, chNames);
         clearWindowMapByChannel(chId);
 
-        setStatus("通道 " ++ pad2(chId + 1) ++ " 关闭失败，已按原网页状态模型重置按钮");
+        setStatus("通道 " ++ string.format("%02d", chId + 1) ++ " 关闭失败，已按原网页状态模型重置按钮");
     }
 }
 
 toggleChannel = function(chId){
     var idx = chId + 1;
 
-    if(chOpened[idx] == 1) {
+    if(chOpened[idx]) {
         closeChannel(chId);
     }
     else {
@@ -883,91 +826,48 @@ toggleChannel = function(chId){
 }
 
 ptz = function(cmd, stop){
-    if(wbReady != 1) return;
+    if(!wbReady) return;
 
     logger.call("JS ptz(" ++ tostring(cmd) ++ "," ++ tostring(stop) ++ ")");
     var r = callJs("ptz", cmd, stop);
-    logger.ret("ptz=" ++ toText(r));
+    logger.ret("ptz=" ++ tostring(r));
 }
 
 activeXMenu = function(funcName, label, needLogin){
-    if(wbReady != 1) {
+    if(!wbReady) {
         setStatus("ActiveX 尚未准备好");
         return;
     }
 
-    if(needLogin == 1 && isLoggedIn != 1) {
+    if(needLogin && !isLoggedIn) {
         setStatus(label ++ "需要先连接设备");
-        pendingAutoOpenAll = 0;
+        pendingAutoOpenAll = false;
         loginDevice();
         return;
     }
 
     logger.call("JS " ++ funcName ++ "()");
     var r = callJs(funcName);
-    logger.ret(funcName ++ "=" ++ toText(r));
+    logger.ret(funcName ++ "=" ++ tostring(r));
 
     setStatus("已打开：" ++ label);
 }
 
 showSettingDialog = function(){
+    var dlg = mainForm.loadForm("\dlg\setting.aardio");
+    dlg.doModal();
+
+    // 重新加载配置
     loadConfig();
-
-    var dlg = win.form(
-        parent = mainForm;
-        text = "连接设置";
-        left = -1;
-        top = -1;
-        right = 420;
-        bottom = 230;
-        max = false;
-        min = false;
-    );
-
-    dlg.add(
-        lblIp = {cls = "static"; text = "连接地址"; left = 30; top = 30; right = 110; bottom = 55;};
-        editIp = {cls = "edit"; text = cfg.ip; left = 120; top = 28; right = 380; bottom = 56; edge = 1;};
-        lblUser = { cls = "static"; text = "用户名"; left = 30; top = 75; right = 110; bottom = 100;};
-        editUser = { cls = "edit"; text = cfg.username; left = 120; top = 73; right = 380; bottom = 101; edge = 1;};
-        lblPass = {cls = "static"; text = "密码"; left = 30; top = 120; right = 110; bottom = 145;};
-        editPass = {cls = "edit"; text = cfg.password; left = 120; top = 118; right = 380; bottom = 146; edge = 1; password = 1;};
-        btnSave = {cls = "button"; text = "保存"; left = 120; top = 170; right = 230; bottom = 205;};
-        btnCancel = {cls = "button"; text = "取消"; left = 270; top = 170; right = 380; bottom = 205;}
-    );
-
-    dlg.btnSave.oncommand = function(){
-        cfg.ip = dlg.editIp.text;
-        cfg.username = dlg.editUser.text;
-        cfg.password = dlg.editPass.text;
-
-        if(cfg.ip == "") {
-            cfg.ip = "192.168.0.5";
-        }
-
-        if(cfg.username == "") {
-            cfg.username = "admin";
-        }
-
-        saveConfig();
-        dlg.close();
-
-        setStatus("设置已保存，正在重新加载控件");
-
+    if(hasFullConfig()) {
         logoutDevice();
-
         mainForm.setTimeout(
             function(){
-                loadMiniHtml(1);
+                loadMiniHtml(true);
             },
             500
         );
     }
-
-    dlg.btnCancel.oncommand = function(){
-        dlg.close();
-    }
-
-    dlg.show();
 }
 
 // 初始化通道按钮数组
@@ -983,11 +883,11 @@ chButtons = {
 }
 
 loadConfig();
-loadChannelNames();
+channel.loadNames(chNames);
 
 for(i=1;8;1){
-    chOpened[i] = 0;
-    setChButtonText(i - 1, 0);
+    chOpened[i] = false;
+    channel.setButtonText(chButtons, i - 1, false, chNames);
 }
 
 // 事件绑定
@@ -1057,11 +957,11 @@ mainForm.show();
 
 mainForm.setTimeout(
     function(){
-        if(hasFullConfig() == 1) {
-            loadMiniHtml(1);
+        if(hasFullConfig()) {
+            loadMiniHtml(true);
         }
         else {
-            loadMiniHtml(0);
+            loadMiniHtml(false);
             setStatus("未设置密码，请点击“设置”");
         }
     },
