@@ -88,6 +88,7 @@ var wb = null;
 var webDlg = null;
 var wbReady = false;
 var wbLoading = false;
+var wbLoadToken = 0;
 var networkChecking = false;
 var isLoggedIn = false;
 var pendingAutoOpenAll = false;
@@ -645,7 +646,12 @@ finishActiveXLoad = function(autoConnect, checkRet){
     }
 }
 
-checkActiveXReady = function(autoConnect, retriesLeft){
+checkActiveXReady = function(autoConnect, retriesLeft, loadToken){
+    if(loadToken !== null && loadToken != wbLoadToken) {
+        logger.debug("忽略已失效的 ActiveX 检测 token=" ++ tostring(loadToken));
+        return;
+    }
+
     lastActiveXCheckResult = null;
 
     logger.call("JS checkActiveX()");
@@ -665,7 +671,7 @@ checkActiveXReady = function(autoConnect, retriesLeft){
         setStatus("ActiveX 正在初始化，继续等待");
         mainForm.setTimeout(
             function(){
-                checkActiveXReady(autoConnect, retriesLeft - 1);
+                checkActiveXReady(autoConnect, retriesLeft - 1, loadToken);
             },
             1000
         );
@@ -873,6 +879,13 @@ setupExternal = function(){
 }
 
 loadMiniHtml = function(autoConnect){
+    if(webDlg !== null) {
+        pendingAutoOpenAll = false;
+        logger.info("内嵌 Web 版已打开，跳过主界面 ActiveX 加载");
+        setStatus("内嵌 Web 版已打开，主界面 ActiveX 暂停加载");
+        return;
+    }
+
     if(wbLoading) {
         if(autoConnect) {
             pendingAutoOpenAll = true;
@@ -884,6 +897,8 @@ loadMiniHtml = function(autoConnect){
     }
 
     wbLoading = true;
+    wbLoadToken++;
+    var loadToken = wbLoadToken;
     loadConfig();
     channel.loadNames(chNames);
 
@@ -920,10 +935,42 @@ loadMiniHtml = function(autoConnect){
 
     mainForm.setTimeout(
         function(){
-            checkActiveXReady(autoConnect, 4);
+            checkActiveXReady(autoConnect, 4, loadToken);
         },
         2000
     );
+}
+
+unloadMainActiveX = function(){
+    logger.info("卸载主界面 ActiveX：准备打开内嵌 Web 版");
+
+    if(wb !== null) {
+        if(wbReady || wbLoading) {
+            logger.call("JS logoutDevice() before unload");
+
+            try {
+                var r = callJs("logoutDevice");
+                logger.ret("logoutDevice.beforeUnload=" ++ tostring(r));
+            }
+            catch(e) {
+                logger.error("卸载前断开 ActiveX 异常：" ++ tostring(e));
+            }
+        }
+
+        try {
+            wb.write("<html><body style='margin:0;background:#000'></body></html>");
+        }
+        catch(e) {
+            logger.error("卸载 ActiveX 容器失败：" ++ tostring(e));
+        }
+    }
+
+    wbReady = false;
+    wbLoading = false;
+    wbLoadToken++;
+    lastActiveXCheckResult = null;
+    resetRuntimeState(true);
+    setStatus("主界面 ActiveX 已卸载");
 }
 
 loginDevice = function(skipNetworkCheck){
@@ -1124,8 +1171,21 @@ showSettingDialog = function(){
 }
 
 openWebVersion = function(){
-    logger.info("打开 Web 版窗口");
+    if(webDlg !== null) {
+        logger.info("内嵌 Web 版窗口已打开，忽略重复打开请求");
+        setStatus("内嵌 Web 版窗口已打开");
+        return;
+    }
+
+    logger.info("打开内嵌 Web 版窗口");
+    unloadMainActiveX();
+
     webDlg = mainForm.loadForm("\dlg\web.aardio");
+    webDlg.onClose = function(){
+        logger.info("内嵌 Web 版窗口已关闭");
+        webDlg = null;
+        setStatus("内嵌 Web 版已关闭，可重新连接主界面");
+    }
     webDlg.show();
 }
 
