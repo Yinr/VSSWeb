@@ -4,6 +4,7 @@ import config;
 import logger;
 import channel;
 import fsys.version;
+import process;
 /*DSG{{*/
 mainForm = win.form(text="监控";left=0;top=0;right=1190;bottom=650)
 mainForm.add(
@@ -28,7 +29,8 @@ btnRight={cls="button";text='\u2192';left=1080;top=455;right=1165;bottom=485;dr=
 btnSetting={cls="button";text="设置";left=920;top=15;right=1165;bottom=50;dr=1;z=15};
 btnSysConfig={cls="button";text="系统";left=920;top=530;right=978;bottom=560;dr=1;z=22};
 btnUp={cls="button";text='\u2191';left=1000;top=420;right=1085;bottom=450;dr=1;z=8};
-editLog={cls="edit";left=920;top=610;right=1165;bottom=640;db=1;dr=1;edge=1;multiline=1;vscroll=1;z=3};
+btnBrowser={cls="button";text="打开浏览器";left=920;top=610;right=1040;bottom=640;db=1;dr=1;z=26};
+btnWeb={cls="button";text="打开 Web 版";left=1045;top=610;right=1165;bottom=640;db=1;dr=1;z=3};
 lblPtz={cls="static";text="云台控制";left=920;top=395;right=1165;bottom=415;dr=1;z=18};
 statusText={cls="static";text="状态：正在初始化";left=920;top=570;right=1165;bottom=605;db=1;dr=1;edge=1;z=13};
 videoHost={cls="static";left=10;top=10;right=900;bottom=640;ah=1;aw=1;db=1;dl=1;dr=1;dt=1;edge=1;z=5}
@@ -65,7 +67,7 @@ if(currentVersion != "") {
 web.form.emulation(11001);
 
 // 日志初始化
-logger.init(mainForm.editLog);
+logger.init(null);
 
 log = function(msg){
     logger.write(msg);
@@ -78,6 +80,7 @@ var cfg = {
 }
 
 var wb = null;
+var webDlg = null;
 var wbReady = false;
 var isLoggedIn = false;
 var pendingAutoOpenAll = false;
@@ -875,6 +878,22 @@ showSettingDialog = function(){
     }
 }
 
+openWebVersion = function(){
+    webDlg = mainForm.loadForm("\dlg\web.aardio");
+    webDlg.show();
+}
+
+openDeviceInBrowser = function(){
+    loadConfig();
+
+    var ip = cfg.ip;
+    if(ip === null || ip == "") {
+        ip = "192.168.0.5";
+    }
+
+    process.execute("http://" ++ ip);
+}
+
 // 初始化通道按钮数组
 chButtons = {
     mainForm.btnCh01;
@@ -930,6 +949,14 @@ mainForm.btnAlarm.oncommand = function(){
 
 mainForm.btnAbout.oncommand = function(){
     activeXMenu("showAbout", "关于", 0);
+}
+
+mainForm.btnWeb.oncommand = function(){
+    openWebVersion();
+}
+
+mainForm.btnBrowser.oncommand = function(){
+    openDeviceInBrowser();
 }
 
 mainForm.btnCh01.oncommand = function(){ toggleChannel(0); }

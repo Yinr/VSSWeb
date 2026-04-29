@@ -1,16 +1,26 @@
 import win.ui;
 import win.dlg.message;
 import config;
+import fsys.version;
 
 /*DSG{{*/
-mainForm = win.form(text="监控 - 用户名：admin";right=1280;bottom=750)
-mainForm.add()
+var winform = win.form(text="监控 - 用户名：admin";right=1280;bottom=750)
+winform.add()
 /*}}*/
 
 import web.form;
 web.form.emulation(11001);
 
 config.loadDevice();
+
+var username = config.device.username;
+if(username === null || username == "") {
+    username = "admin";
+}
+
+var verInfo = fsys.version.getInfo(io._exepath);
+var currentVersion = verInfo ? tostring(verInfo.productVersion) : "";
+winform.text = "监控 Web 版" ++ (currentVersion != "" ? " v" ++ currentVersion : "") ++ " - 用户名：" ++ username;
 
 var ip = config.device.ip;
 if(ip === null || ip == "") {
@@ -19,12 +29,17 @@ if(ip === null || ip == "") {
     config.saveDevice();
 }
 
-var wb = web.form(mainForm);
+var wb = web.form(winform);
 wb.silent = true;
 
 wb.go("http://" ++ ip);
 
-mainForm.center();
-mainForm.show();
+winform.center();
+
+if(owner !== null) {
+    return winform;
+}
+
+winform.show();
 
 return win.loopMessage();
