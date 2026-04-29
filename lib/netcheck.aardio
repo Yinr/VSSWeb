@@ -1,0 +1,30 @@
+// netcheck 网络预检模块
+
+import wsock.tcp.client;
+
+netcheck = {};
+
+netcheck.testPort = function(host, port, timeout){
+    try {
+        return wsock.tcp.client.test(host, port, timeout) !== null;
+    }
+    catch(e) {
+        return false;
+    }
+}
+
+netcheck.checkDevice = function(host, timeout){
+    if(timeout === null) {
+        timeout = 1;
+    }
+
+    var webOk = netcheck.testPort(host, 80, timeout);
+    var serviceOk = netcheck.testPort(host, 8000, timeout);
+
+    return {
+        host = host;
+        webOk = webOk;
+        serviceOk = serviceOk;
+        ok = serviceOk;
+    };
+}

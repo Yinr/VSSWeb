@@ -3,6 +3,7 @@ import web.form;
 import config;
 import logger;
 import channel;
+import netcheck;
 import fsys.version;
 import process;
 /*DSG{{*/
@@ -146,6 +147,31 @@ hasFullConfig = function(){
     if(cfg.ip === null || cfg.ip == "") return false;
     if(cfg.username === null || cfg.username == "") return false;
     if(cfg.password === null || cfg.password == "") return false;
+
+    return true;
+}
+
+checkDeviceNetwork = function(){
+    setStatus("正在检测设备网络：" ++ cfg.ip);
+
+    var ret = netcheck.checkDevice(cfg.ip, 1);
+
+    logger.ret("tcp " ++ cfg.ip ++ ":80=" ++ tostring(ret.webOk));
+    logger.ret("tcp " ++ cfg.ip ++ ":8000=" ++ tostring(ret.serviceOk));
+
+    if(!ret.webOk && !ret.serviceOk) {
+        setStatus("设备网络不可达：" ++ cfg.ip ++ "，80/8000 端口均未响应");
+        return false;
+    }
+
+    if(!ret.serviceOk) {
+        setStatus("设备服务端口不可达：" ++ cfg.ip ++ ":8000");
+        return false;
+    }
+
+    if(!ret.webOk) {
+        logger.error("设备 Web 端口未响应，但 8000 可达，继续尝试 ActiveX 登录");
+    }
 
     return true;
 }
@@ -718,6 +744,12 @@ loginDevice = function(){
 
     if(!hasFullConfig()) {
         setStatus("未设置完整连接信息，请点击“设置”");
+        return false;
+    }
+
+    if(!checkDeviceNetwork()) {
+        pendingAutoOpenAll = false;
+        isLoggedIn = false;
         return false;
     }
 
