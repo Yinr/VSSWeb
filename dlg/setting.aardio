@@ -1,22 +1,27 @@
 import win.ui;
 import config;
 /*DSG{{*/
-var dlg = win.form(text="连接设置";right=420;bottom=230;max=false;min=false;parent=owner)
+var dlg = win.form(text="连接设置";right=420;bottom=320;max=false;min=false;parent=owner)
 dlg.add(
-btnCancel={cls="button";text="取消";left=270;top=170;right=380;bottom=205;tabstop=1;z=8};
-btnSave={cls="button";text="保存";left=120;top=170;right=230;bottom=205;default=1;tabstop=1;z=9};
-btnShowPass={cls="button";text="显示";left=330;top=118;right=380;bottom=146;z=7};
-editIp={cls="edit";left=120;top=28;right=380;bottom=56;edge=1;tabstop=1;z=5};
-editPass={cls="edit";left=120;top=118;right=320;bottom=146;edge=1;password=1;tabstop=1;z=2};
-editUser={cls="edit";left=120;top=73;right=380;bottom=101;edge=1;tabstop=1;z=3};
-lblIp={cls="static";text="连接地址";left=30;top=30;right=110;bottom=55;z=4};
-lblPass={cls="static";text="密码";left=30;top=120;right=110;bottom=145;z=1};
-lblUser={cls="static";text="用户名";left=30;top=75;right=110;bottom=100;z=6}
-)
+ btnCancel={cls="button";text="取消";left=270;top=255;right=380;bottom=290;tabstop=1;z=8};
+ btnSave={cls="button";text="保存";left=120;top=255;right=230;bottom=290;default=1;tabstop=1;z=9};
+ btnShowPass={cls="button";text="显示";left=330;top=118;right=380;bottom=146;z=7};
+ editIp={cls="edit";left=120;top=28;right=380;bottom=56;edge=1;tabstop=1;z=5};
+ editLogLevel={cls="edit";left=120;top=163;right=380;bottom=191;edge=1;tabstop=1;z=10};
+ editPass={cls="edit";left=120;top=118;right=320;bottom=146;edge=1;password=1;tabstop=1;z=2};
+ editUser={cls="edit";left=120;top=73;right=380;bottom=101;edge=1;tabstop=1;z=3};
+ editWriteFile={cls="edit";left=120;top=208;right=380;bottom=236;edge=1;tabstop=1;z=11};
+ lblIp={cls="static";text="连接地址";left=30;top=30;right=110;bottom=55;z=4};
+ lblLogLevel={cls="static";text="日志等级";left=30;top=165;right=110;bottom=190;z=12};
+ lblPass={cls="static";text="密码";left=30;top=120;right=110;bottom=145;z=1};
+ lblUser={cls="static";text="用户名";left=30;top=75;right=110;bottom=100;z=6};
+ lblWriteFile={cls="static";text="写入文件";left=30;top=210;right=110;bottom=235;z=13}
+ )
 /*}}*/
 
 // 加载当前配置到对话框
 config.loadDevice();
+config.loadLog();
 
 dlg.editIp.text = config.device.ip;
 if(dlg.editIp.text === null || dlg.editIp.text == "") {
@@ -33,9 +38,18 @@ if(dlg.editPass.text === null) {
     dlg.editPass.text = "";
 }
 
+dlg.editLogLevel.text = config.log.level;
+if(dlg.editLogLevel.text === null || dlg.editLogLevel.text == "") {
+    dlg.editLogLevel.text = "off";
+}
+
+dlg.editWriteFile.text = config.log.fileEnabled ? "true" : "false";
+
 var oldIp = dlg.editIp.text;
 var oldUser = dlg.editUser.text;
 var oldPass = dlg.editPass.text;
+var oldLogLevel = dlg.editLogLevel.text;
+var oldWriteFile = dlg.editWriteFile.text;
 var passwordChar = dlg.editPass.passwordChar;
 
 dlg.btnShowPass.oncommand = function(){
@@ -54,6 +68,8 @@ dlg.btnSave.oncommand = function(){
     var ip = dlg.editIp.text;
     var username = dlg.editUser.text;
     var password = dlg.editPass.text;
+    var logLevel = string.lower(tostring(dlg.editLogLevel.text));
+    var writeFile = string.lower(tostring(dlg.editWriteFile.text));
 
     if(ip == "") {
         ip = "192.168.0.5";
@@ -63,14 +79,29 @@ dlg.btnSave.oncommand = function(){
         username = "admin";
     }
 
-    if(ip == oldIp && username == oldUser && password == oldPass) {
+    if(logLevel != "off" && logLevel != "error" && logLevel != "info" && logLevel != "debug") {
+        win.msgbox("日志等级仅支持 off / error / info / debug", "设置", "warning", dlg);
+        return;
+    }
+
+    if(writeFile != "true" && writeFile != "false" && writeFile != "1" && writeFile != "0" && writeFile != "yes" && writeFile != "no" && writeFile != "on" && writeFile != "off") {
+        win.msgbox("写入文件仅支持 true / false", "设置", "warning", dlg);
+        return;
+    }
+
+    var writeFileEnabled = writeFile == "true" || writeFile == "1" || writeFile == "yes" || writeFile == "on";
+
+    if(ip == oldIp && username == oldUser && password == oldPass && logLevel == oldLogLevel && (writeFileEnabled ? "true" : "false") == oldWriteFile) {
         dlg.endModal();
     }
     else {
         config.device.ip = ip;
         config.device.username = username;
         config.device.password = password;
+        config.log.level = logLevel;
+        config.log.fileEnabled = writeFileEnabled;
         config.saveDevice();
+        config.saveLog();
 
         dlg.endModal(1);
     }

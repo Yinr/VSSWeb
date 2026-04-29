@@ -75,7 +75,7 @@ web.form.emulation(11001);
 logger.init(null);
 
 log = function(msg){
-    logger.write(msg);
+    logger.info(msg);
 }
 
 var cfg = {
@@ -128,6 +128,7 @@ setStatus = function(msg){
 
 loadConfig = function(){
     config.loadDevice();
+    config.loadLog();
 
     cfg.ip = config.device.ip;
     if(cfg.ip === null || cfg.ip == "") {
@@ -143,6 +144,8 @@ loadConfig = function(){
     if(cfg.password === null) {
         cfg.password = "";
     }
+
+    logger.configure(config.log.level, config.log.fileEnabled);
 }
 
 saveConfig = function(){
@@ -151,6 +154,7 @@ saveConfig = function(){
     config.device.password = cfg.password;
 
     config.saveDevice();
+    logger.debug("连接配置已保存");
 }
 hasFullConfig = function(){
     if(cfg.ip === null || cfg.ip == "") return false;
@@ -167,6 +171,7 @@ onNetworkCheckResult = function(ret, autoConnect){
     if(ret === null) {
         pendingAutoOpenAll = false;
         isLoggedIn = false;
+        logger.error("设备网络检测返回空结果");
         setStatus("设备网络检测失败");
         return;
     }
@@ -215,9 +220,10 @@ mainForm.onNetworkCheckResult = onNetworkCheckResult;
 
 checkDeviceNetworkAsync = function(autoConnect){
     config.loadNetworkCheck();
+    logger.debug("开始设备网络预检 mode=" ++ tostring(config.networkCheck.mode) ++ " autoConnect=" ++ tostring(autoConnect));
 
     if(config.networkCheck.skip) {
-        logger.error("已跳过设备网络预检");
+        logger.info("已跳过设备网络预检");
         setStatus("已跳过设备网络预检，正在加载 ActiveX");
 
         if(!wbReady) {
@@ -274,6 +280,7 @@ clearWindowMapByChannel = function(chId){
 
 callJs = function(funcName, a, b){
     if(wb === null) {
+        logger.error("浏览器控件尚未创建，无法调用 JS：" ++ funcName);
         setStatus("浏览器控件尚未创建");
         return null;
     }
@@ -322,7 +329,7 @@ callJs = function(funcName, a, b){
     }
 
     try {
-        log("[SCRIPT] " ++ script);
+        logger.debug("[SCRIPT] " ++ script);
         return wb.doScript(script);
     }
     catch(e) {
@@ -623,12 +630,14 @@ finishActiveXLoad = function(autoConnect, checkRet){
     if(!checkRet) {
         wbReady = false;
         pendingAutoOpenAll = false;
+        logger.error("ActiveX 检测失败");
         setStatus("无法加载 ActiveX，请点击“打开 Web 版”或“打开浏览器”安装控件");
         win.msgbox('无法加载 IVSWeb ActiveX 控件。\n\n请确认本机已安装并注册控件，或点击主界面的“打开 Web 版”“打开浏览器”从设备页面安装/访问。', "ActiveX 加载失败", "warning", mainForm);
         return;
     }
 
     wbReady = true;
+    logger.info("ActiveX 检测成功，控件已就绪");
     setStatus("ActiveX 已准备好，默认 4 窗格");
 
     if(autoConnect || pendingAutoOpenAll) {
@@ -693,6 +702,7 @@ setupExternal = function(){
 
             if(!!ret) {
                 isLoggedIn = true;
+                logger.info("设备登录成功 ip=" ++ cfg.ip);
                 setStatus("登录成功：" ++ cfg.ip);
 
                 if(pendingAutoOpenAll) {
@@ -709,6 +719,7 @@ setupExternal = function(){
             else {
                 isLoggedIn = false;
                 pendingAutoOpenAll = false;
+                logger.error("设备登录失败 ip=" ++ cfg.ip ++ " ret=" ++ tostring(ret));
 
                 if(lastNetworkCheckResult && !lastNetworkCheckResult.ok) {
                     setStatus(lastNetworkCheckResult.message);
@@ -723,9 +734,11 @@ setupExternal = function(){
             logger.callback("OpenAllResult=" ++ tostring(ret));
 
             if(!!ret) {
+                logger.info("已请求打开全部通道");
                 setStatus("已请求打开全部通道");
             }
             else {
+                logger.error("打开全部通道失败 ret=" ++ tostring(ret));
                 setStatus("打开全部通道失败：" ++ tostring(ret));
             }
         };
@@ -735,9 +748,11 @@ setupExternal = function(){
 
             if(!!ret) {
                 resetRuntimeState(false);
+                logger.info("已请求关闭全部通道");
                 setStatus("已请求关闭全部通道");
             }
             else {
+                logger.error("关闭全部通道失败 ret=" ++ tostring(ret));
                 setStatus("关闭全部通道失败：" ++ tostring(ret));
             }
         };
@@ -863,6 +878,7 @@ loadMiniHtml = function(autoConnect){
             pendingAutoOpenAll = true;
         }
 
+        logger.debug("ActiveX 正在加载，复用当前加载流程");
         setStatus("ActiveX 正在加载，请稍候");
         return;
     }
@@ -876,20 +892,22 @@ loadMiniHtml = function(autoConnect){
 
     logger.clear();
 
-    log("==============================================");
-    log("监控程序启动");
-    log("配置文件：" ++ config.path);
-    log("日志文件：" ++ logger.path);
-    log("ip=" ++ cfg.ip);
-    log("username=" ++ cfg.username);
-    log("password=" ++ (cfg.password == "" ? "<空>" : "<已设置>"));
-    log("useCodebaseForActiveX=" ++ tostring(useCodebaseForActiveX));
-    log("==============================================");
+    logger.info("==============================================");
+    logger.info("监控程序启动");
+    logger.info("配置文件：" ++ config.path);
+    logger.info("日志文件：" ++ logger.path ++ " / fileEnabled=" ++ tostring(logger.enableFile));
+    logger.info("日志等级：" ++ logger.level);
+    logger.debug("ip=" ++ cfg.ip);
+    logger.debug("username=" ++ cfg.username);
+    logger.debug("password=" ++ (cfg.password == "" ? "<空>" : "<已设置>"));
+    logger.debug("useCodebaseForActiveX=" ++ tostring(useCodebaseForActiveX));
+    logger.info("==============================================");
 
     if(wb === null) {
         wb = web.form(mainForm.videoHost);
         wb.silent = true;
         setupExternal();
+        logger.info("已创建 WebBrowser 宿主");
     }
 
     if(autoConnect) {
@@ -912,11 +930,13 @@ loginDevice = function(skipNetworkCheck){
     loadConfig();
 
     if(!wbReady) {
+        logger.error("ActiveX 尚未准备好，无法登录");
         setStatus("ActiveX 尚未准备好");
         return false;
     }
 
     if(!hasFullConfig()) {
+        logger.error("连接信息不完整，无法登录");
         setStatus("未设置完整连接信息，请点击“设置”");
         return false;
     }
@@ -927,6 +947,7 @@ loginDevice = function(skipNetworkCheck){
     }
 
     setStatus("正在连接：" ++ cfg.ip);
+    logger.info("开始连接设备 ip=" ++ cfg.ip ++ " skipNetworkCheck=" ++ tostring(skipNetworkCheck));
 
     logger.call("JS loginFromExternal()");
     var r = callJs("loginFromExternal");
@@ -939,9 +960,11 @@ autoLoginAndOpenAll = function(){
     pendingAutoOpenAll = true;
 
     loadConfig();
+    logger.info("请求自动登录并打开全部通道");
 
     if(!hasFullConfig()) {
         pendingAutoOpenAll = false;
+        logger.error("连接信息不完整，无法自动登录");
         setStatus("未设置完整连接信息，请点击“设置”");
         return;
     }
@@ -950,6 +973,7 @@ autoLoginAndOpenAll = function(){
 }
 
 logoutDevice = function(){
+    logger.info("请求断开设备");
     logger.call("JS logoutDevice()");
 
     try {
@@ -965,12 +989,14 @@ logoutDevice = function(){
 
 openAllChannels = function(){
     if(!wbReady) {
+        logger.info("ActiveX 未就绪，先触发自动登录和打开全部通道");
         autoLoginAndOpenAll();
         return;
     }
 
     if(!isLoggedIn) {
         pendingAutoOpenAll = true;
+        logger.info("尚未登录，先执行登录再打开全部通道");
         loginDevice();
         return;
     }
@@ -982,6 +1008,7 @@ openAllChannels = function(){
 
 closeAllChannels = function(){
     if(!wbReady) {
+        logger.error("ActiveX 尚未准备好，无法关闭全部通道");
         setStatus("ActiveX 尚未准备好");
         return;
     }
@@ -993,6 +1020,7 @@ closeAllChannels = function(){
 
 openChannel = function(chId){
     if(!wbReady) {
+        logger.info("ActiveX 尚未加载，先加载控件再处理通道请求 ch=" ++ tostring(chId + 1));
         setStatus("ActiveX 尚未加载，正在加载控件，请稍后再打开通道");
         loadMiniHtml(false);
         return;
@@ -1000,6 +1028,7 @@ openChannel = function(chId){
 
     if(!isLoggedIn) {
         pendingAutoOpenAll = false;
+        logger.info("尚未登录，先执行登录再打开通道 ch=" ++ tostring(chId + 1));
         loginDevice();
         return;
     }
@@ -1013,6 +1042,7 @@ openChannel = function(chId){
 
 closeChannel = function(chId){
     if(!wbReady) {
+        logger.error("ActiveX 尚未准备好，无法关闭通道 ch=" ++ tostring(chId + 1));
         setStatus("ActiveX 尚未准备好");
         return;
     }
@@ -1054,12 +1084,14 @@ ptz = function(cmd, stop){
 
 activeXMenu = function(funcName, label, needLogin){
     if(!wbReady) {
+        logger.info("ActiveX 尚未加载，先加载控件再打开菜单：" ++ label);
         setStatus("ActiveX 尚未加载，正在加载控件，请稍后重试：" ++ label);
         loadMiniHtml(false);
         return;
     }
 
     if(needLogin && !isLoggedIn) {
+        logger.info(label ++ " 需要登录，先执行登录");
         setStatus(label ++ "需要先连接设备");
         pendingAutoOpenAll = false;
         loginDevice();
@@ -1074,9 +1106,11 @@ activeXMenu = function(funcName, label, needLogin){
 }
 
 showSettingDialog = function(){
+    logger.info("打开设置对话框");
     var re = mainForm.loadForm("\dlg\setting.aardio").doModal();
     if(re == 1) {
         loadConfig();
+        logger.info("设置已更新 level=" ++ config.log.level ++ " fileEnabled=" ++ tostring(config.log.fileEnabled));
         if(hasFullConfig()) {
             logoutDevice();
             mainForm.setTimeout(
@@ -1090,6 +1124,7 @@ showSettingDialog = function(){
 }
 
 openWebVersion = function(){
+    logger.info("打开 Web 版窗口");
     webDlg = mainForm.loadForm("\dlg\web.aardio");
     webDlg.show();
 }
@@ -1102,6 +1137,7 @@ openDeviceInBrowser = function(){
         ip = "192.168.0.5";
     }
 
+    logger.info("在系统浏览器中打开设备页面 ip=" ++ ip);
     process.execute("http://" ++ ip);
 }
 

@@ -3,6 +3,7 @@
 // 注意：如果使用 fsys.ini，中文通道名建议把 monitor.ini 保存为 ANSI 编码。
 
 import fsys.ini;
+import logger;
 
 config = {};
 
@@ -25,6 +26,11 @@ config.networkCheck = {
     mode = "ping";
 }
 
+config.log = {
+    level = "off";
+    fileEnabled = false;
+}
+
 config.channelNames = {};
 
 config.pad2 = function(n){
@@ -37,6 +43,7 @@ config.openIni = function(){
 
 config.loadDevice = function(){
     var ini = config.openIni();
+    logger.debug("读取设备配置：" ++ config.path);
 
     config.device.ip = ini.read("device", "ip");
     if(config.device.ip === null || config.device.ip == "") {
@@ -59,6 +66,7 @@ config.loadDevice = function(){
 
 config.saveDevice = function(){
     var ini = config.openIni();
+    logger.debug("保存设备配置：" ++ config.path);
 
     ini.write("device", "ip", config.device.ip);
     ini.write("device", "username", config.device.username);
@@ -67,6 +75,7 @@ config.saveDevice = function(){
 
 config.loadNetworkCheck = function(){
     var ini = config.openIni();
+    logger.debug("读取网络预检配置");
 
     var skip = ini.read("networkCheck", "skip");
     if(skip === null || skip == "") {
@@ -94,13 +103,51 @@ config.loadNetworkCheck = function(){
 
 config.saveNetworkCheck = function(){
     var ini = config.openIni();
+    logger.debug("保存网络预检配置");
 
     ini.write("networkCheck", "skip", config.networkCheck.skip ? "true" : "false");
     ini.write("networkCheck", "mode", config.networkCheck.mode || "ping");
 }
 
+config.loadLog = function(){
+    var ini = config.openIni();
+
+    var level = ini.read("log", "level");
+    if(level === null || level == "") {
+        level = "off";
+        ini.write("log", "level", level);
+    }
+
+    level = string.lower(tostring(level));
+    if(level != "off" && level != "error" && level != "info" && level != "debug") {
+        level = "off";
+        ini.write("log", "level", level);
+    }
+
+    config.log.level = level;
+
+    var fileEnabled = ini.read("log", "fileEnabled");
+    if(fileEnabled === null || fileEnabled == "") {
+        fileEnabled = "false";
+        ini.write("log", "fileEnabled", fileEnabled);
+    }
+
+    fileEnabled = string.lower(tostring(fileEnabled));
+    config.log.fileEnabled = fileEnabled == "true" || fileEnabled == "1" || fileEnabled == "yes" || fileEnabled == "on";
+    logger.debug("读取日志配置 level=" ++ config.log.level ++ " fileEnabled=" ++ tostring(config.log.fileEnabled));
+}
+
+config.saveLog = function(){
+    var ini = config.openIni();
+    logger.debug("保存日志配置 level=" ++ tostring(config.log.level) ++ " fileEnabled=" ++ tostring(config.log.fileEnabled));
+
+    ini.write("log", "level", config.log.level || "off");
+    ini.write("log", "fileEnabled", config.log.fileEnabled ? "true" : "false");
+}
+
 config.loadChannelNames = function(){
     var ini = config.openIni();
+    logger.debug("读取通道名称配置");
 
     for(i=1;8;1){
         var key = "ch" ++ config.pad2(i);
@@ -119,6 +166,7 @@ config.loadChannelNames = function(){
 
 config.saveChannelNames = function(){
     var ini = config.openIni();
+    logger.debug("保存通道名称配置");
 
     for(i=1;8;1){
         var key = "ch" ++ config.pad2(i);
@@ -135,12 +183,14 @@ config.saveChannelNames = function(){
 config.loadAll = function(){
     config.loadDevice();
     config.loadNetworkCheck();
+    config.loadLog();
     config.loadChannelNames();
 }
 
 config.saveAll = function(){
     config.saveDevice();
     config.saveNetworkCheck();
+    config.saveLog();
     config.saveChannelNames();
 }
 config.loadAll();

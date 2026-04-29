@@ -2,6 +2,7 @@ import win.ui;
 import win.dlg.message;
 import config;
 import fsys.version;
+import logger;
 
 /*DSG{{*/
 var winform = win.form(text="监控 - 用户名：admin";right=1280;bottom=750)
@@ -12,6 +13,9 @@ import web.form;
 web.form.emulation(11001);
 
 config.loadDevice();
+config.loadLog();
+logger.init(null);
+logger.configure(config.log.level, config.log.fileEnabled);
 
 var username = config.device.username;
 if(username === null || username == "") {
@@ -32,6 +36,7 @@ if(ip === null || ip == "") {
 var wb = web.form(winform);
 wb.silent = true;
 
+logger.info("打开 Web 版页面 ip=" ++ ip);
 wb.go("http://" ++ ip);
 
 winform.center();

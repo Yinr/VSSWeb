@@ -30,9 +30,11 @@ statusText={cls="static";text="状态：正在初始化";left=1000;top=625;right
 // 纯本地直连版没有日志文本框，所以第一个参数传 null。
 // 如果想和主程序共用日志，把 /native_log.txt 改成 /log.txt。
 logger.init(null, io.fullpath("/native_log.txt"));
+config.loadLog();
+logger.configure(config.log.level, config.log.fileEnabled);
 
 log = function(msg){
-    logger.write(msg);
+    logger.info(msg);
 }
 
 var OCX_ID = "{D639FA00-CB11-4f67-82F2-C0A87EAECD13}";
@@ -69,6 +71,7 @@ pad2 = function(n){
 
 loadConfig = function(){
     config.loadDevice();
+    config.loadLog();
 
     cfg.ip = config.device.ip;
     if(cfg.ip === null || cfg.ip == "") {
@@ -84,6 +87,8 @@ loadConfig = function(){
     if(cfg.password === null) {
         cfg.password = "";
     }
+
+    logger.configure(config.log.level, config.log.fileEnabled, null, io.fullpath("/native_log.txt"));
 }
 
 saveConfig = function(){
@@ -92,6 +97,7 @@ saveConfig = function(){
     config.device.password = cfg.password;
 
     config.saveDevice();
+    logger.debug("直连版连接配置已保存");
 }
 
 loadChannelNames = function(){
@@ -394,7 +400,7 @@ showSettingDialog = function(){
         left = 0;
         top = 0;
         right = 420;
-        bottom = 230;
+        bottom = 320;
         max = false;
         min = false;
     );
@@ -452,21 +458,55 @@ showSettingDialog = function(){
             edge = 1;
             password = 1;
         };
+        lblLogLevel = {
+            cls = "static";
+            text = "日志等级";
+            left = 30;
+            top = 165;
+            right = 110;
+            bottom = 190;
+        };
+        editLogLevel = {
+            cls = "edit";
+            text = config.log.level;
+            left = 120;
+            top = 163;
+            right = 380;
+            bottom = 191;
+            edge = 1;
+        };
+        lblWriteFile = {
+            cls = "static";
+            text = "写入文件";
+            left = 30;
+            top = 210;
+            right = 110;
+            bottom = 235;
+        };
+        editWriteFile = {
+            cls = "edit";
+            text = config.log.fileEnabled ? "true" : "false";
+            left = 120;
+            top = 208;
+            right = 380;
+            bottom = 236;
+            edge = 1;
+        };
         btnSave = {
             cls = "button";
             text = "保存";
             left = 120;
-            top = 170;
+            top = 255;
             right = 230;
-            bottom = 205;
+            bottom = 290;
         };
         btnCancel = {
             cls = "button";
             text = "取消";
             left = 270;
-            top = 170;
+            top = 255;
             right = 380;
-            bottom = 205;
+            bottom = 290;
         }
     );
 
@@ -474,6 +514,8 @@ showSettingDialog = function(){
         cfg.ip = dlg.editIp.text;
         cfg.username = dlg.editUser.text;
         cfg.password = dlg.editPass.text;
+        var logLevel = string.lower(tostring(dlg.editLogLevel.text));
+        var writeFile = string.lower(tostring(dlg.editWriteFile.text));
 
         if(cfg.ip == "") {
             cfg.ip = "192.168.0.5";
@@ -483,7 +525,22 @@ showSettingDialog = function(){
             cfg.username = "admin";
         }
 
+        if(logLevel != "off" && logLevel != "error" && logLevel != "info" && logLevel != "debug") {
+            win.msgbox("日志等级仅支持 off / error / info / debug", "设置", "warning", dlg);
+            return;
+        }
+
+        if(writeFile != "true" && writeFile != "false" && writeFile != "1" && writeFile != "0" && writeFile != "yes" && writeFile != "no" && writeFile != "on" && writeFile != "off") {
+            win.msgbox("写入文件仅支持 true / false", "设置", "warning", dlg);
+            return;
+        }
+
+        config.log.level = logLevel;
+        config.log.fileEnabled = writeFile == "true" || writeFile == "1" || writeFile == "yes" || writeFile == "on";
+
         saveConfig();
+        config.saveLog();
+        logger.configure(config.log.level, config.log.fileEnabled, null, io.fullpath("/native_log.txt"));
         setStatus("设置已保存到 " ++ config.path);
 
         dlg.close();

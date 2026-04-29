@@ -5,8 +5,16 @@ logger = {};
 logger.path = io.fullpath("/log.txt");
 logger.text = "";
 logger.edit = null;
-logger.enableFile = true;
+logger.enableFile = false;
 logger.enableUi = true;
+logger.level = "off";
+
+logger.levelWeight = {
+    off = 0;
+    error = 1;
+    info = 2;
+    debug = 3;
+}
 
 logger.init = function(editCtrl, logFilePath){
     logger.edit = editCtrl;
@@ -24,6 +32,52 @@ logger.init = function(editCtrl, logFilePath){
         catch(e) {
         }
     }
+}
+
+logger.normalizeLevel = function(level){
+    level = string.lower(logger.toText(level));
+
+    if(level == "error" || level == "info" || level == "debug" || level == "off") {
+        return level;
+    }
+
+    return "off";
+}
+
+logger.setLevel = function(level){
+    logger.level = logger.normalizeLevel(level);
+}
+
+logger.setFileEnabled = function(enabled){
+    logger.enableFile = !!enabled;
+}
+
+logger.configure = function(level, fileEnabled, editCtrl, logFilePath){
+    if(editCtrl !== null) {
+        logger.edit = editCtrl;
+    }
+
+    if(logFilePath !== null && logFilePath != "") {
+        logger.path = logFilePath;
+    }
+
+    logger.setLevel(level);
+    logger.setFileEnabled(fileEnabled);
+}
+
+logger.canWrite = function(level){
+    var current = logger.levelWeight[logger.level];
+    var target = logger.levelWeight[logger.normalizeLevel(level)];
+
+    if(current === null) {
+        current = 0;
+    }
+
+    if(target === null) {
+        target = 0;
+    }
+
+    return current >= target && target > 0;
 }
 
 logger.toText = function(v){
@@ -46,7 +100,12 @@ logger.save = function(){
     }
 }
 
-logger.write = function(msg){
+logger.write = function(msg, level){
+    level = logger.normalizeLevel(level || "info");
+    if(!logger.canWrite(level)) {
+        return;
+    }
+
     var line = logger.toText(msg);
 
     if(logger.enableUi == true && logger.edit !== null) {
@@ -77,29 +136,37 @@ logger.clear = function(){
 }
 
 logger.status = function(msg){
-    logger.write("[STATUS] " ++ logger.toText(msg));
+    logger.write("[STATUS] " ++ logger.toText(msg), "info");
+}
+
+logger.info = function(msg){
+    logger.write("[INFO] " ++ logger.toText(msg), "info");
 }
 
 logger.error = function(msg){
-    logger.write("[ERR] " ++ logger.toText(msg));
+    logger.write("[ERR] " ++ logger.toText(msg), "error");
 }
 
 logger.js = function(msg){
-    logger.write("[JS] " ++ logger.toText(msg));
+    logger.write("[JS] " ++ logger.toText(msg), "debug");
 }
 
 logger.event = function(msg){
-    logger.write("[EVENT] " ++ logger.toText(msg));
+    logger.write("[EVENT] " ++ logger.toText(msg), "debug");
 }
 
 logger.callback = function(msg){
-    logger.write("[CALLBACK] " ++ logger.toText(msg));
+    logger.write("[CALLBACK] " ++ logger.toText(msg), "debug");
 }
 
 logger.call = function(msg){
-    logger.write("[CALL] " ++ logger.toText(msg));
+    logger.write("[CALL] " ++ logger.toText(msg), "debug");
 }
 
 logger.ret = function(msg){
-    logger.write("[RET ] " ++ logger.toText(msg));
+    logger.write("[RET ] " ++ logger.toText(msg), "debug");
+}
+
+logger.debug = function(msg){
+    logger.write("[DEBUG] " ++ logger.toText(msg), "debug");
 }

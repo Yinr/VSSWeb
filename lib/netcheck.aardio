@@ -2,6 +2,7 @@
 
 import icmp.ping;
 import inet.http;
+import logger;
 
 netcheck = {};
 
@@ -11,6 +12,7 @@ netcheck.httpTimeout = 1500;
 
 netcheck.testPing = function(host){
     var ok = false;
+    logger.debug("开始 Ping 检测 host=" ++ tostring(host));
 
     var attempts = netcheck.pingAttempts;
     if(attempts === null || attempts < 1) {
@@ -25,10 +27,12 @@ netcheck.testPing = function(host){
 
             if(!!ping.perform(host)) {
                 ok = true;
+                logger.debug("Ping 检测成功 host=" ++ tostring(host) ++ " attempt=" ++ tostring(i));
                 i = attempts + 1;
             }
         }
         catch(e) {
+            logger.debug("Ping 检测异常 host=" ++ tostring(host) ++ " err=" ++ tostring(e));
         }
 
         i++;
@@ -46,6 +50,7 @@ netcheck.checkWebPage = function(host){
     var weakHits = 0;
 
     try {
+        logger.debug("开始 HTTP 页面检测 host=" ++ tostring(host));
         http = inet.http();
         http.setTimeouts(netcheck.httpTimeout, netcheck.httpTimeout, netcheck.httpTimeout);
 
@@ -94,6 +99,7 @@ netcheck.checkWebPage = function(host){
         }
     }
     catch(e) {
+        logger.debug("HTTP 页面检测异常 host=" ++ tostring(host) ++ " err=" ++ tostring(e));
         try {
             if(http) http.close();
         }
@@ -114,6 +120,8 @@ netcheck.checkDevice = function(host, mode){
     if(mode === null || mode == "") {
         mode = "ping";
     }
+
+    logger.info("执行设备网络检测 host=" ++ tostring(host) ++ " mode=" ++ tostring(mode));
 
     var pingOk = null;
     var pageOk = null;
