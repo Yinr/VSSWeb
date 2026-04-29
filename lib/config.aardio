@@ -20,6 +20,11 @@ config.device = {
     password = "";
 }
 
+config.networkCheck = {
+    skip = false;
+    mode = "ping";
+}
+
 config.channelNames = {};
 
 config.pad2 = function(n){
@@ -60,6 +65,40 @@ config.saveDevice = function(){
     ini.write("device", "password", config.device.password);
 }
 
+config.loadNetworkCheck = function(){
+    var ini = config.openIni();
+
+    var skip = ini.read("networkCheck", "skip");
+    if(skip === null || skip == "") {
+        skip = "false";
+        ini.write("networkCheck", "skip", skip);
+    }
+
+    skip = string.lower(tostring(skip));
+    config.networkCheck.skip = skip == "true" || skip == "1" || skip == "yes" || skip == "on";
+
+    var mode = ini.read("networkCheck", "mode");
+    if(mode === null || mode == "") {
+        mode = "ping";
+        ini.write("networkCheck", "mode", mode);
+    }
+
+    mode = string.lower(tostring(mode));
+    if(mode != "ping" && mode != "http") {
+        mode = "ping";
+        ini.write("networkCheck", "mode", mode);
+    }
+
+    config.networkCheck.mode = mode;
+}
+
+config.saveNetworkCheck = function(){
+    var ini = config.openIni();
+
+    ini.write("networkCheck", "skip", config.networkCheck.skip ? "true" : "false");
+    ini.write("networkCheck", "mode", config.networkCheck.mode || "ping");
+}
+
 config.loadChannelNames = function(){
     var ini = config.openIni();
 
@@ -95,12 +134,13 @@ config.saveChannelNames = function(){
 
 config.loadAll = function(){
     config.loadDevice();
+    config.loadNetworkCheck();
     config.loadChannelNames();
 }
 
 config.saveAll = function(){
     config.saveDevice();
+    config.saveNetworkCheck();
     config.saveChannelNames();
 }
-
 config.loadAll();

@@ -1,28 +1,17 @@
 import win.ui;
 import config;
-
 /*DSG{{*/
-var dlg = win.form(
-    parent = owner;
-    text = "连接设置";
-    left = -1;
-    top = -1;
-    right = 420;
-    bottom = 230;
-    max = false;
-    min = false;
-)
-
+var dlg = win.form(text="连接设置";right=420;bottom=230;max=false;min=false;parent=owner)
 dlg.add(
-    lblIp = {cls = "static"; text = "连接地址"; left = 30; top = 30; right = 110; bottom = 55;};
-    editIp = {cls = "edit"; left = 120; top = 28; right = 380; bottom = 56; edge = 1;};
-    lblUser = { cls = "static"; text = "用户名"; left = 30; top = 75; right = 110; bottom = 100;};
-    editUser = { cls = "edit"; left = 120; top = 73; right = 380; bottom = 101; edge = 1;};
-    lblPass = {cls = "static"; text = "密码"; left = 30; top = 120; right = 110; bottom = 145;};
-    editPass = {cls = "edit"; left = 120; top = 118; right = 320; bottom = 146; edge = 1; password = 1;};
-    btnShowPass = {cls = "button"; text = "显示"; left = 330; top = 118; right = 380; bottom = 146;};
-    btnSave = {cls = "button"; text = "保存"; left = 120; top = 170; right = 230; bottom = 205;};
-    btnCancel = {cls = "button"; text = "取消"; left = 270; top = 170; right = 380; bottom = 205;}
+btnCancel={cls="button";text="取消";left=270;top=170;right=380;bottom=205;tabstop=1;z=8};
+btnSave={cls="button";text="保存";left=120;top=170;right=230;bottom=205;default=1;tabstop=1;z=9};
+btnShowPass={cls="button";text="显示";left=330;top=118;right=380;bottom=146;z=7};
+editIp={cls="edit";left=120;top=28;right=380;bottom=56;edge=1;tabstop=1;z=5};
+editPass={cls="edit";left=120;top=118;right=320;bottom=146;edge=1;password=1;tabstop=1;z=2};
+editUser={cls="edit";left=120;top=73;right=380;bottom=101;edge=1;tabstop=1;z=3};
+lblIp={cls="static";text="连接地址";left=30;top=30;right=110;bottom=55;z=4};
+lblPass={cls="static";text="密码";left=30;top=120;right=110;bottom=145;z=1};
+lblUser={cls="static";text="用户名";left=30;top=75;right=110;bottom=100;z=6}
 )
 /*}}*/
 

@@ -1,30 +1,164 @@
 // netcheck 网络预检模块
 
-import wsock.tcp.client;
+import icmp.ping;
+import inet.http;
 
 netcheck = {};
 
-netcheck.testPort = function(host, port, timeout){
-    try {
-        return wsock.tcp.client.test(host, port, timeout) !== null;
+netcheck.pingTimeout = 1000;
+netcheck.pingAttempts = 2;
+netcheck.httpTimeout = 1500;
+
+netcheck.testPing = function(host){
+    var ok = false;
+
+    var attempts = netcheck.pingAttempts;
+    if(attempts === null || attempts < 1) {
+        attempts = 1;
     }
-    catch(e) {
-        return false;
+
+    var i = 1;
+    while(i <= attempts) {
+        try {
+            var ping = icmp.ping();
+            ping.timeout = netcheck.pingTimeout;
+
+            if(!!ping.perform(host)) {
+                ok = true;
+                i = attempts + 1;
+            }
+        }
+        catch(e) {
+        }
+
+        i++;
     }
+
+    return ok;
 }
 
-netcheck.checkDevice = function(host, timeout){
-    if(timeout === null) {
-        timeout = 1;
+netcheck.checkWebPage = function(host){
+    var http = null;
+    var ok = false;
+    var hasPage = false;
+    var length = 0;
+    var strongHits = 0;
+    var weakHits = 0;
+
+    try {
+        http = inet.http();
+        http.setTimeouts(netcheck.httpTimeout, netcheck.httpTimeout, netcheck.httpTimeout);
+
+        var html = http.get("http://" ++ host ++ "/");
+
+        length = html === null ? 0 : #html;
+
+        try {
+            http.close();
+        }
+        catch(e) {
+        }
+
+        if(html !== null && html != "") {
+            hasPage = true;
+
+            var strongKeywords = {
+                "D639FA00-CB11-4f67-82F2-C0A87EAECD13";
+                "IVSWeb.cab";
+                "LoginDeviceEx";
+                "olp.js";
+            }
+
+            var weakKeywords = {
+                "VssWebCookie";
+                "GetChannelName";
+                "GetDevConfig";
+                "ConnectAllChannle";
+                "oem_t.js";
+                "m.js";
+            }
+
+            for(i=1;#strongKeywords;1){
+                if(string.find(html, strongKeywords[i]) !== null) {
+                    strongHits++;
+                }
+            }
+
+            for(i=1;#weakKeywords;1){
+                if(string.find(html, weakKeywords[i]) !== null) {
+                    weakHits++;
+                }
+            }
+
+            ok = strongHits >= 1 || weakHits >= 2;
+        }
+    }
+    catch(e) {
+        try {
+            if(http) http.close();
+        }
+        catch(ex) {
+        }
     }
 
-    var webOk = netcheck.testPort(host, 80, timeout);
-    var serviceOk = netcheck.testPort(host, 8000, timeout);
+    return {
+        ok = ok;
+        hasPage = hasPage;
+        length = length;
+        strongHits = strongHits;
+        weakHits = weakHits;
+    };
+}
+
+netcheck.checkDevice = function(host, mode){
+    if(mode === null || mode == "") {
+        mode = "ping";
+    }
+
+    var pingOk = null;
+    var pageOk = null;
+    var pageChecked = false;
+    var pageInfo = null;
+
+    if(mode == "http") {
+        pageInfo = netcheck.checkWebPage(host);
+        pageChecked = true;
+        pageOk = pageInfo.ok;
+    }
+    else {
+        pingOk = netcheck.testPing(host);
+    }
+
+    var clearlyUnreachable = false;
+    if(mode == "http") {
+        clearlyUnreachable = !pageOk;
+    }
+    else {
+        clearlyUnreachable = !pingOk;
+    }
+
+    var message = "ok";
+    if(clearlyUnreachable) {
+        if(mode == "http" && pageChecked && pageInfo.hasPage && !pageOk) {
+            message = "目标地址可达，但未识别到 IVSWeb 设备页面：" ++ host;
+        }
+        elseif(mode == "http") {
+            message = "设备网络不可达：" ++ host ++ "，HTTP 页面检测未响应";
+        }
+        else {
+            message = "设备网络不可达：" ++ host ++ "，Ping 未响应";
+        }
+    }
 
     return {
         host = host;
-        webOk = webOk;
-        serviceOk = serviceOk;
-        ok = serviceOk;
+        mode = mode;
+        pingOk = pingOk;
+        pageChecked = pageChecked;
+        pageOk = pageOk;
+        pageInfo = pageInfo;
+        ok = !clearlyUnreachable;
+        clearlyUnreachable = clearlyUnreachable;
+        message = message;
     };
 }

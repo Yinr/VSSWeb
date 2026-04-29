@@ -6,6 +6,7 @@ import channel;
 import netcheck;
 import fsys.version;
 import process;
+import thread;
 
 var baseTitle = "监控";
 /*DSG{{*/
@@ -86,8 +87,13 @@ var cfg = {
 var wb = null;
 var webDlg = null;
 var wbReady = false;
+var wbLoading = false;
+var networkChecking = false;
 var isLoggedIn = false;
 var pendingAutoOpenAll = false;
+var useCodebaseForActiveX = false;
+var lastActiveXCheckResult = null;
+var lastNetworkCheckResult = null;
 
 var chButtons = {};
 var chOpened = {};
@@ -154,29 +160,105 @@ hasFullConfig = function(){
     return true;
 }
 
-checkDeviceNetwork = function(){
+onNetworkCheckResult = function(ret, autoConnect){
+    networkChecking = false;
+    lastNetworkCheckResult = ret;
+
+    if(ret === null) {
+        pendingAutoOpenAll = false;
+        isLoggedIn = false;
+        setStatus("设备网络检测失败");
+        return;
+    }
+
+    if(ret.mode !== null) {
+        logger.ret("networkCheck.mode=" ++ tostring(ret.mode));
+    }
+
+    if(ret.pingOk !== null) {
+        logger.ret("ping " ++ ret.host ++ "=" ++ tostring(ret.pingOk));
+    }
+
+    if(ret.pageChecked) {
+        logger.ret("http.ivsWeb=" ++ tostring(ret.pageOk));
+
+        if(ret.pageInfo !== null) {
+            logger.ret("http.strongHits=" ++ tostring(ret.pageInfo.strongHits));
+            logger.ret("http.weakHits=" ++ tostring(ret.pageInfo.weakHits));
+        }
+    }
+
+    if(ret.clearlyUnreachable) {
+        pendingAutoOpenAll = false;
+        isLoggedIn = false;
+        logger.error(ret.message);
+        setStatus(ret.message);
+        return;
+    }
+
+    if(!ret.ok) {
+        logger.error(ret.message ++ "，继续尝试 ActiveX 登录");
+        setStatus(ret.message ++ "，继续尝试连接");
+    }
+
+    if(!wbReady) {
+        loadMiniHtml(autoConnect);
+        return;
+    }
+
+    if(autoConnect) {
+        loginDevice(true);
+    }
+}
+
+mainForm.onNetworkCheckResult = onNetworkCheckResult;
+
+checkDeviceNetworkAsync = function(autoConnect){
+    config.loadNetworkCheck();
+
+    if(config.networkCheck.skip) {
+        logger.error("已跳过设备网络预检");
+        setStatus("已跳过设备网络预检，正在加载 ActiveX");
+
+        if(!wbReady) {
+            loadMiniHtml(autoConnect);
+            return;
+        }
+
+        if(autoConnect) {
+            loginDevice(true);
+        }
+
+        return;
+    }
+
+    if(networkChecking) {
+        if(autoConnect) {
+            pendingAutoOpenAll = true;
+        }
+
+        setStatus("正在检测设备网络：" ++ cfg.ip);
+        return;
+    }
+
+    networkChecking = true;
+    lastNetworkCheckResult = null;
     setStatus("正在检测设备网络：" ++ cfg.ip);
 
-    var ret = netcheck.checkDevice(cfg.ip, 1);
+    var hwnd = mainForm.hwnd;
+    var host = cfg.ip;
+    var mode = config.networkCheck.mode;
 
-    logger.ret("tcp " ++ cfg.ip ++ ":80=" ++ tostring(ret.webOk));
-    logger.ret("tcp " ++ cfg.ip ++ ":8000=" ++ tostring(ret.serviceOk));
+    thread.invoke(
+        function(hwnd, host, autoConnect, mode){
+            import netcheck;
+            import thread;
 
-    if(!ret.webOk && !ret.serviceOk) {
-        setStatus("设备网络不可达：" ++ cfg.ip ++ "，80/8000 端口均未响应");
-        return false;
-    }
-
-    if(!ret.serviceOk) {
-        setStatus("设备服务端口不可达：" ++ cfg.ip ++ ":8000");
-        return false;
-    }
-
-    if(!ret.webOk) {
-        logger.error("设备 Web 端口未响应，但 8000 可达，继续尝试 ActiveX 登录");
-    }
-
-    return true;
+            var ret = netcheck.checkDevice(host, mode);
+            thread.callWnd(hwnd, "onNetworkCheckResult", ret, autoConnect);
+        },
+        hwnd, host, autoConnect, mode
+    );
 }
 
 clearWindowMapByChannel = function(chId){
@@ -198,8 +280,8 @@ callJs = function(funcName, a, b){
 
     var script = "";
 
-    if(funcName == "ping") {
-        script = "ping();";
+    if(funcName == "checkActiveX") {
+        script = "checkActiveX();";
     }
     elseif(funcName == "loginFromExternal") {
         script = "loginFromExternal();";
@@ -252,6 +334,11 @@ callJs = function(funcName, a, b){
 
 makeHtml = function(){
     var baseUrl = "http://" ++ cfg.ip ++ "/";
+    var codebaseAttr = "";
+
+    if(useCodebaseForActiveX) {
+        codebaseAttr = '\r\n        codebase="__BASE_URL__IVSWeb.cab#version=1,0,2,5"';
+    }
 
     var html = /*
 <!doctype html>
@@ -285,7 +372,7 @@ html,body{
         height="100%"
         border="0"
         classid="CLSID:D639FA00-CB11-4f67-82F2-C0A87EAECD13"
-        codebase="__BASE_URL__IVSWeb.cab#version=1,0,2,5">
+        __CODEBASE_ATTR__>
     <param name="lVideoWindNum" value="4">
     <param name="VideoWindBGColor" value="">
     <param name="VideoWindBarColor" value="">
@@ -304,9 +391,26 @@ function logMsg(msg){
     }catch(e){}
 }
 
-function ping(){
-    logMsg("JS ping called");
-    return "pong";
+function checkActiveX(){
+    try{
+        if(typeof ocx == "undefined" || !ocx){
+            logMsg("JS ActiveX object missing");
+            try{ window.external.ActiveXCheckResult(false); }catch(ex){}
+            return false;
+        }
+
+        try{
+            logMsg("JS ActiveX typeof ocx=" + typeof ocx);
+        }catch(ex){}
+
+        logMsg("JS ActiveX object ready");
+        try{ window.external.ActiveXCheckResult(true); }catch(ex){}
+        return true;
+    }catch(e){
+        logMsg("JS ActiveX check error=" + e.message);
+        try{ window.external.ActiveXCheckResult(false); }catch(ex){}
+        return false;
+    }
 }
 
 function loginFromExternal(){
@@ -497,7 +601,69 @@ function logoutDevice(){
 */;
 
     html = string.replace(html, "__BASE_URL__", baseUrl);
+    html = string.replace(html, "__CODEBASE_ATTR__", codebaseAttr);
     return html;
+}
+
+resetRuntimeState = function(clearPendingAutoOpenAll){
+    if(clearPendingAutoOpenAll) {
+        pendingAutoOpenAll = false;
+    }
+
+    isLoggedIn = false;
+    currentWid = null;
+    winMap = {};
+    winState = {};
+    channel.clearAllState(chOpened, chButtons, chNames);
+}
+
+finishActiveXLoad = function(autoConnect, checkRet){
+    wbLoading = false;
+
+    if(!checkRet) {
+        wbReady = false;
+        pendingAutoOpenAll = false;
+        setStatus("无法加载 ActiveX，请点击“打开 Web 版”或“打开浏览器”安装控件");
+        win.msgbox('无法加载 IVSWeb ActiveX 控件。\n\n请确认本机已安装并注册控件，或点击主界面的“打开 Web 版”“打开浏览器”从设备页面安装/访问。', "ActiveX 加载失败", "warning", mainForm);
+        return;
+    }
+
+    wbReady = true;
+    setStatus("ActiveX 已准备好，默认 4 窗格");
+
+    if(autoConnect || pendingAutoOpenAll) {
+        loginDevice(true);
+    }
+}
+
+checkActiveXReady = function(autoConnect, retriesLeft){
+    lastActiveXCheckResult = null;
+
+    logger.call("JS checkActiveX()");
+    var checkRet = callJs("checkActiveX");
+    logger.ret("checkActiveX=" ++ tostring(checkRet));
+
+    if(lastActiveXCheckResult === null && checkRet !== null) {
+        lastActiveXCheckResult = !!checkRet;
+    }
+
+    if(!!lastActiveXCheckResult) {
+        finishActiveXLoad(autoConnect, true);
+        return;
+    }
+
+    if(retriesLeft > 0) {
+        setStatus("ActiveX 正在初始化，继续等待");
+        mainForm.setTimeout(
+            function(){
+                checkActiveXReady(autoConnect, retriesLeft - 1);
+            },
+            1000
+        );
+        return;
+    }
+
+    finishActiveXLoad(autoConnect, false);
 }
 
 setupExternal = function(){
@@ -516,6 +682,10 @@ setupExternal = function(){
 
         Log = function(msg){
             logger.js(tostring(msg));
+        };
+
+        ActiveXCheckResult = function(ret){
+            lastActiveXCheckResult = !!ret;
         };
 
         LoginResult = function(ret){
@@ -539,7 +709,13 @@ setupExternal = function(){
             else {
                 isLoggedIn = false;
                 pendingAutoOpenAll = false;
-                setStatus("登录失败：ActiveX 返回 " ++ tostring(ret));
+
+                if(lastNetworkCheckResult && !lastNetworkCheckResult.ok) {
+                    setStatus(lastNetworkCheckResult.message);
+                }
+                else {
+                    setStatus("登录失败：ActiveX 返回 " ++ tostring(ret));
+                }
             }
         };
 
@@ -558,10 +734,7 @@ setupExternal = function(){
             logger.callback("CloseAllResult=" ++ tostring(ret));
 
             if(!!ret) {
-                channel.clearAllState(chOpened, chButtons, chNames);
-                currentWid = null;
-                winMap = {};
-                winState = {};
+                resetRuntimeState(false);
                 setStatus("已请求关闭全部通道");
             }
             else {
@@ -663,11 +836,7 @@ setupExternal = function(){
         DeviceDisconnected = function(ip, pt){
             logger.event("DeviceDisconnected ip=" ++ tostring(ip) ++ " pt=" ++ tostring(pt));
 
-            isLoggedIn = false;
-            channel.clearAllState(chOpened, chButtons, chNames);
-            currentWid = null;
-            winMap = {};
-            winState = {};
+            resetRuntimeState(false);
             setStatus("设备断开：" ++ tostring(ip));
         };
 
@@ -689,16 +858,21 @@ setupExternal = function(){
 }
 
 loadMiniHtml = function(autoConnect){
+    if(wbLoading) {
+        if(autoConnect) {
+            pendingAutoOpenAll = true;
+        }
+
+        setStatus("ActiveX 正在加载，请稍候");
+        return;
+    }
+
+    wbLoading = true;
     loadConfig();
     channel.loadNames(chNames);
 
     wbReady = false;
-    isLoggedIn = false;
-    pendingAutoOpenAll = false;
-    currentWid = null;
-    winMap = {};
-    winState = {};
-    channel.clearAllState(chOpened, chButtons, chNames);
+    resetRuntimeState(true);
 
     logger.clear();
 
@@ -709,6 +883,7 @@ loadMiniHtml = function(autoConnect){
     log("ip=" ++ cfg.ip);
     log("username=" ++ cfg.username);
     log("password=" ++ (cfg.password == "" ? "<空>" : "<已设置>"));
+    log("useCodebaseForActiveX=" ++ tostring(useCodebaseForActiveX));
     log("==============================================");
 
     if(wb === null) {
@@ -717,27 +892,23 @@ loadMiniHtml = function(autoConnect){
         setupExternal();
     }
 
+    if(autoConnect) {
+        pendingAutoOpenAll = true;
+    }
+
+    setStatus("正在加载 ActiveX");
     wb.write(makeHtml());
-    setStatus("已加载 ActiveX，默认 4 窗格");
+    setStatus("已创建 ActiveX 容器，正在检测控件");
 
     mainForm.setTimeout(
         function(){
-            wbReady = true;
-            setStatus("ActiveX 已准备好");
-
-            logger.call("JS ping()");
-            var pingRet = callJs("ping");
-            logger.ret("ping=" ++ tostring(pingRet));
-
-            if(autoConnect) {
-                autoLoginAndOpenAll();
-            }
+            checkActiveXReady(autoConnect, 4);
         },
         2000
     );
 }
 
-loginDevice = function(){
+loginDevice = function(skipNetworkCheck){
     loadConfig();
 
     if(!wbReady) {
@@ -750,10 +921,9 @@ loginDevice = function(){
         return false;
     }
 
-    if(!checkDeviceNetwork()) {
-        pendingAutoOpenAll = false;
-        isLoggedIn = false;
-        return false;
+    if(!skipNetworkCheck) {
+        checkDeviceNetworkAsync(true);
+        return true;
     }
 
     setStatus("正在连接：" ++ cfg.ip);
@@ -767,7 +937,16 @@ loginDevice = function(){
 
 autoLoginAndOpenAll = function(){
     pendingAutoOpenAll = true;
-    loginDevice();
+
+    loadConfig();
+
+    if(!hasFullConfig()) {
+        pendingAutoOpenAll = false;
+        setStatus("未设置完整连接信息，请点击“设置”");
+        return;
+    }
+
+    checkDeviceNetworkAsync(true);
 }
 
 logoutDevice = function(){
@@ -780,18 +959,13 @@ logoutDevice = function(){
     catch(e) {
     }
 
-    isLoggedIn = false;
-    pendingAutoOpenAll = false;
-    channel.clearAllState(chOpened, chButtons, chNames);
-    currentWid = null;
-    winMap = {};
-    winState = {};
+    resetRuntimeState(true);
     setStatus("已断开");
 }
 
 openAllChannels = function(){
     if(!wbReady) {
-        setStatus("ActiveX 尚未准备好");
+        autoLoginAndOpenAll();
         return;
     }
 
@@ -819,7 +993,8 @@ closeAllChannels = function(){
 
 openChannel = function(chId){
     if(!wbReady) {
-        setStatus("ActiveX 尚未准备好");
+        setStatus("ActiveX 尚未加载，正在加载控件，请稍后再打开通道");
+        loadMiniHtml(false);
         return;
     }
 
@@ -879,7 +1054,8 @@ ptz = function(cmd, stop){
 
 activeXMenu = function(funcName, label, needLogin){
     if(!wbReady) {
-        setStatus("ActiveX 尚未准备好");
+        setStatus("ActiveX 尚未加载，正在加载控件，请稍后重试：" ++ label);
+        loadMiniHtml(false);
         return;
     }
 
@@ -905,7 +1081,7 @@ showSettingDialog = function(){
             logoutDevice();
             mainForm.setTimeout(
                 function(){
-                    loadMiniHtml(true);
+                    autoLoginAndOpenAll();
                 },
                 500
             );
@@ -1025,10 +1201,9 @@ mainForm.show();
 mainForm.setTimeout(
     function(){
         if(hasFullConfig()) {
-            loadMiniHtml(true);
+            autoLoginAndOpenAll();
         }
         else {
-            loadMiniHtml(false);
             setStatus("未设置密码，请点击“设置”");
         }
     },
