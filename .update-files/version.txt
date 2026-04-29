@@ -1,8 +1,8 @@
 {
-    "description":"优化设置界面",
+    "description":"优化连接稳定性与使用体验。",
     "format":".lzma",
     "main":"VSSWeb.exe",
     "updater":"VSSWeb.exe",
     "url":"https://vssweb.lolicon.in/",
-    "version":"0.1"
+    "version":"0.2"
 }
