@@ -4,6 +4,21 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      source:
+        description: "Select what to deploy"
+        required: true
+        default: latest-tag
+        type: choice
+        options:
+          - latest-tag
+          - main
+          - custom-ref
+      ref:
+        description: "Branch or tag name when source=custom-ref"
+        required: false
+        type: string
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
@@ -24,10 +39,65 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository metadata
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve deployment ref
+        id: resolve
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          event_name="${{ github.event_name }}"
+          source_input="${{ github.event.inputs.source || '' }}"
+          ref_input="${{ github.event.inputs.ref || '' }}"
+
+          if [[ "$event_name" == "push" ]]; then
+            deploy_ref="${{ github.ref_name }}"
+            version_tag="$deploy_ref"
+          else
+            case "$source_input" in
+              latest-tag)
+                git fetch --force --tags origin
+                deploy_ref="$(git describe --tags --abbrev=0 origin/main)"
+                version_tag="$deploy_ref"
+                ;;
+              main)
+                deploy_ref="main"
+                version_tag=""
+                ;;
+              custom-ref)
+                if [[ -z "$ref_input" ]]; then
+                  echo "Input 'ref' is required when source=custom-ref" >&2
+                  exit 1
+                fi
+                deploy_ref="$ref_input"
+                if [[ "$deploy_ref" == v* ]]; then
+                  version_tag="$deploy_ref"
+                else
+                  version_tag=""
+                fi
+                ;;
+              *)
+                echo "Unsupported source: $source_input" >&2
+                exit 1
+                ;;
+            esac
+          fi
+
+          echo "deploy_ref=$deploy_ref" >> "$GITHUB_OUTPUT"
+          echo "version_tag=$version_tag" >> "$GITHUB_OUTPUT"
+
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.resolve.outputs.deploy_ref }}
+          fetch-depth: 0
       - name: Check update package version
-        run: python3 scripts/release/check_update_version.py "${{ github.ref_name }}"
+        if: ${{ steps.resolve.outputs.version_tag != '' }}
+        run: python3 scripts/release/check_update_version.py "${{ steps.resolve.outputs.version_tag }}"
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
